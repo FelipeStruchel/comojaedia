@@ -3,7 +3,8 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const cron = require('node-cron');
 const moment = require('moment');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
 const express = require('express');
@@ -32,7 +33,7 @@ const frasesPath = path.join(__dirname, 'frases.json');
 // Função para ler as frases
 async function lerFrases() {
     try {
-        const data = await fs.readFile(frasesPath, 'utf8');
+        const data = await fsPromises.readFile(frasesPath, 'utf8');
         return JSON.parse(data);
     } catch (error) {
         console.error('Erro ao ler frases:', error);
@@ -42,7 +43,7 @@ async function lerFrases() {
 
 // Função para salvar as frases
 async function salvarFrases(data) {
-    await fs.writeFile(frasesPath, JSON.stringify(data, null, 2));
+    await fsPromises.writeFile(frasesPath, JSON.stringify(data, null, 2));
 }
 
 // Rota para obter todas as frases
@@ -248,7 +249,7 @@ async function downloadInstagramVideo() {
                 
                 const videoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
                 console.log(`Salvando vídeo em: ${videoPath}`);
-                await fs.writeFile(videoPath, videoResponse.data);
+                await fsPromises.writeFile(videoPath, videoResponse.data);
                 console.log('Vídeo baixado com sucesso!');
                 return videoPath;
             }
@@ -265,7 +266,7 @@ async function downloadInstagramVideo() {
 // Função para obter uma frase aleatória e removê-la
 async function getRandomPhrase() {
     try {
-        const data = await fs.readFile(path.join(__dirname, 'frases.json'), 'utf8');
+        const data = await fsPromises.readFile(path.join(__dirname, 'frases.json'), 'utf8');
         const { frases } = JSON.parse(data);
         if (frases.length === 0) return '';
 
@@ -273,7 +274,7 @@ async function getRandomPhrase() {
         const frase = frases[randomIndex];
 
         frases.splice(randomIndex, 1);
-        await fs.writeFile(path.join(__dirname, 'frases.json'), JSON.stringify({ frases }, null, 2));
+        await fsPromises.writeFile(path.join(__dirname, 'frases.json'), JSON.stringify({ frases }, null, 2));
 
         return frase;
     } catch (error) {
@@ -372,14 +373,14 @@ async function sendWhatsAppMessage() {
         
         console.log('Verificando arquivo de vídeo...');
         try {
-            await fs.access(videoPath, fs.constants.F_OK);
+            await fsPromises.access(videoPath, fs.constants.F_OK);
             console.log(`Arquivo de vídeo encontrado em: ${videoPath}`);
         } catch (error) {
             console.error(`Erro ao acessar arquivo de vídeo: ${error.message}`);
             throw new Error(`Arquivo de vídeo não encontrado em: ${videoPath}`);
         }
 
-        const stats = await fs.stat(videoPath);
+        const stats = await fsPromises.stat(videoPath);
         console.log(`Tamanho do vídeo: ${stats.size} bytes`);
 
         console.log('Enviando cópia do vídeo para o PV...');
@@ -418,7 +419,7 @@ async function sendWhatsAppMessage() {
 
         // Limpar o arquivo de vídeo após o envio
         try {
-            await fs.unlink(videoPath);
+            await fsPromises.unlink(videoPath);
             console.log('Arquivo de vídeo temporário removido com sucesso');
         } catch (cleanupError) {
             console.error('Erro ao remover arquivo temporário:', cleanupError);
