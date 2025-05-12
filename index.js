@@ -110,7 +110,10 @@ const password = 'eusouumbot1234';
 
 // Configuração do WhatsApp
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+        clientId: "whatsapp-bot",
+        dataPath: "/tmp/whatsapp-session"
+    }),
     puppeteer: {
         headless: true,
         args: [
