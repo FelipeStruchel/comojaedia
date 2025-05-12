@@ -287,13 +287,7 @@ async function sendWhatsAppMessage() {
         const chats = await client.getChats();
         console.log(`Total de chats encontrados: ${chats.length}`);
         
-        const group = chats.find(chat => chat.id._serialized === groupId);
-        
-        if (!group) {
-            throw new Error('Bot não é membro do grupo ou grupo não encontrado');
-        }
-
-        console.log(`Enviando mensagem para o grupo: ${group.name}`);
+        console.log(`Enviando mensagem para o grupo: ${groupId}`);
         
         const stats = await fs.stat(videoPath);
         console.log(`Tamanho do vídeo: ${stats.size} bytes`);
