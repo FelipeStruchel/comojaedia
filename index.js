@@ -378,8 +378,14 @@ async function startVideoCheck() {
 
 // Configurar evento de QR Code do WhatsApp
 client.on('qr', (qr) => {
-    qrcode.generate(qr, { small: true });
-    console.log('QR Code gerado! Escaneie com seu WhatsApp.');
+    console.log('QR Code gerado! Escaneie com seu WhatsApp:');
+    console.log('----------------------------------------');
+    qrcode.generate(qr, { small: false });
+    console.log('----------------------------------------');
+    console.log('Se o QR Code acima não estiver legível, você pode:');
+    console.log('1. Aumentar o zoom do terminal');
+    console.log('2. Copiar o QR Code e usar um leitor online');
+    console.log('3. Tentar novamente em alguns segundos');
 });
 
 // Quando o cliente estiver pronto
