@@ -6,4 +6,7 @@ services:
     startCommand: node index.js
     envVars:
       - key: NODE_ENV
-        value: production 
+        value: production
+      - key: PORT
+        value: 3000
+    healthCheckPath: /frases 
