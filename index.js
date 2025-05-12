@@ -16,8 +16,6 @@ const password = 'eusouumbot1234';
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        headless: true,
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -26,7 +24,8 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--disable-gpu'
-        ]
+        ],
+        executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : undefined
     }
 });
 

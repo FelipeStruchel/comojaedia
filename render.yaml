@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: whatsapp-bot
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+    cronJobs:
+      - name: daily-message
+        schedule: "0 8 * * *"
+        command: node index.js 
