@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Frases</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1a1a1a;
+            --card-dark: #2d2d2d;
+            --text-dark: #e0e0e0;
+            --border-dark: #404040;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 1rem;
+        }
+
+        .card {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            color: var(--text-dark);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-control {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .form-control::placeholder {
+            color: #888;
+            opacity: 1;
+        }
+
+        .form-control:focus {
+            background-color: var(--bg-dark);
+            border-color: #0d6efd;
+            color: var(--text-dark);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .frase-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .frase-texto {
+            flex: 1;
+            margin-right: 1rem;
+            word-break: break-word;
+        }
+
+        .caracteres-restantes {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .caracteres-restantes.warning {
+            color: #dc3545;
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding: 0.5rem;
+            }
+
+            .frase-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .frase-texto {
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
+
+            .btn-danger {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-3">
+        <h1>Gerenciador de Frases</h1>
+        
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Adicionar Nova Frase</h5>
+                <div class="mb-3">
+                    <textarea id="novaFrase" class="form-control" rows="3" maxlength="4096" placeholder="Digite sua frase aqui..."></textarea>
+                    <div class="caracteres-restantes mt-1">
+                        Caracteres restantes: <span id="contador">4096</span>
+                    </div>
+                </div>
+                <button id="adicionarFrase" class="btn btn-primary w-100">Adicionar Frase</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Frases Cadastradas</h5>
+                <div id="listaFrases"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_LENGTH = 4096;
+        const API_URL = window.location.origin;
+
+        function atualizarContador() {
+            const frase = document.getElementById('novaFrase').value;
+            const prefixo = 'Mensagem do dia: ';
+            const totalCaracteres = frase.length + prefixo.length;
+            const caracteresRestantes = MAX_LENGTH - totalCaracteres;
+            document.getElementById('contador').textContent = `${caracteresRestantes} caracteres restantes`;
+            
+            if (caracteresRestantes < 0) {
+                document.getElementById('contador').style.color = 'red';
+            } else {
+                document.getElementById('contador').style.color = '#aaa';
+            }
+        }
+
+        // Carrega as frases
+        async function carregarFrases() {
+            try {
+                const response = await fetch(`${API_URL}/frases`);
+                const frases = await response.json();
+                
+                const listaFrases = document.getElementById('listaFrases');
+                listaFrases.innerHTML = '';
+                
+                if (frases.length === 0) {
+                    listaFrases.innerHTML = '<div class="text-center" style="color: #aaa;">Nenhuma frase cadastrada</div>';
+                    return;
+                }
+                
+                frases.forEach((frase, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'frase-item';
+                    div.innerHTML = `
+                        <div class="frase-texto">${frase}</div>
+                        <button class="btn btn-danger" onclick="removerFrase(${index})">Remover</button>
+                    `;
+                    listaFrases.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar frases:', error);
+                alert('Erro ao carregar frases');
+            }
+        }
+
+        // Adiciona uma nova frase
+        document.getElementById('adicionarFrase').addEventListener('click', async function() {
+            const frase = document.getElementById('novaFrase').value.trim();
+            
+            if (!frase) {
+                alert('Por favor, digite uma frase');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/frases`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ frase })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error);
+                }
+
+                document.getElementById('novaFrase').value = '';
+                document.getElementById('contador').textContent = MAX_LENGTH;
+                carregarFrases();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // Remove uma frase
+        async function removerFrase(index) {
+            if (!confirm('Tem certeza que deseja remover esta frase?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/frases/${index}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao remover frase');
+                }
+
+                carregarFrases();
+            } catch (error) {
+                alert('Erro ao remover frase');
+            }
+        }
+
+        // Carrega as frases ao iniciar
+        carregarFrases();
+    </script>
+</body>
+</html> 

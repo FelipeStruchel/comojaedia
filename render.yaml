@@ -6,6 +6,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000
     cronJobs:
       - name: daily-message
         schedule: "0 8 * * *"
