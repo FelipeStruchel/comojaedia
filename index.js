@@ -343,9 +343,18 @@ async function sendWhatsAppMessage() {
     }
 }
 
+// Variável para controlar se já está em execução
+let isRunning = false;
+
 // Função para verificar vídeo e enviar mensagem
 async function checkAndSendVideo() {
+    if (isRunning) {
+        console.log('Já existe uma verificação em andamento...');
+        return false;
+    }
+
     try {
+        isRunning = true;
         const videoPath = await downloadInstagramVideo();
         if (videoPath) {
             console.log('Vídeo novo encontrado! Enviando mensagem...');
@@ -357,6 +366,8 @@ async function checkAndSendVideo() {
     } catch (error) {
         console.error('Erro ao verificar/enviar vídeo:', error);
         return false;
+    } finally {
+        isRunning = false;
     }
 }
 
@@ -389,15 +400,20 @@ client.on('qr', (qr) => {
 });
 
 // Quando o cliente estiver pronto
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log('Cliente WhatsApp conectado!');
+    
+    // Aguarda 5 segundos para garantir que o WhatsApp Web está completamente inicializado
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Inicia a verificação imediatamente
+    console.log('Iniciando verificação de vídeos...');
+    startVideoCheck();
     
     // Agendar tarefa para rodar todos os dias às 7:00
     cron.schedule('0 7 * * *', () => {
         console.log('Iniciando verificação diária de vídeos...');
         startVideoCheck();
-    }, {
-        runOnInit: true
     });
 });
 
