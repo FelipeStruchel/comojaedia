@@ -123,7 +123,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome',
+        executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome-stable',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
