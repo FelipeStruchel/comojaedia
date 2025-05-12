@@ -139,10 +139,27 @@ const client = new Client({
             '--mute-audio',
             '--no-default-browser-check',
             '--safebrowsing-disable-auto-update',
-            '--js-flags=--max-old-space-size=512'
+            '--js-flags=--max-old-space-size=512',
+            '--disable-web-security',
+            '--allow-running-insecure-content',
+            '--disable-features=IsolateOrigins,site-per-process'
         ],
-        ignoreHTTPSErrors: true
+        ignoreHTTPSErrors: true,
+        timeout: 60000
     }
+});
+
+// Adicionar mais logs para debug
+client.on('disconnected', (reason) => {
+    console.log('Cliente desconectado:', reason);
+});
+
+client.on('auth_failure', (error) => {
+    console.error('Falha na autenticação:', error);
+});
+
+client.on('loading_screen', (percent, message) => {
+    console.log('Carregando:', percent, '%', message);
 });
 
 // Data alvo
