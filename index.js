@@ -25,7 +25,8 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu'
         ],
-        executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : undefined
+        executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : undefined,
+        headless: true
     }
 });
 

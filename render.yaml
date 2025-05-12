@@ -1,13 +1,17 @@
 services:
   - type: web
     name: whatsapp-bot
-    env: docker
-    dockerfilePath: ./Dockerfile
+    env: node
+    buildCommand: |
+      apt-get update && apt-get install -y wget gnupg
+      wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+      apt-get update && apt-get install -y google-chrome-stable
+      npm install
+    startCommand: node index.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
     cronJobs:
       - name: daily-message
         schedule: "0 8 * * *"
