@@ -9,6 +9,12 @@ const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
 
+// Criar diretório para arquivos temporários
+const tempDir = path.join(__dirname, 'temp');
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+}
+
 // Configuração do Express
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -240,7 +246,8 @@ async function downloadInstagramVideo() {
                     }
                 });
                 
-                const videoPath = path.join(__dirname, 'video.mp4');
+                const videoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
+                console.log(`Salvando vídeo em: ${videoPath}`);
                 await fs.writeFile(videoPath, videoResponse.data);
                 console.log('Vídeo baixado com sucesso!');
                 return videoPath;
@@ -359,12 +366,19 @@ async function sendWhatsAppMessage() {
         const daysRemaining = getDaysRemaining();
         const randomPhrase = await getRandomPhrase();
         
-        // Mensagem padrão que sempre será enviada com o vídeo
         const defaultMessage = `Faltam ${daysRemaining} dias para a chacrinha e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
 
         const groupId = '120363339314665620@g.us';
         
-        console.log('Verificando conexão com o grupo...');
+        console.log('Verificando arquivo de vídeo...');
+        try {
+            await fs.access(videoPath, fs.constants.F_OK);
+            console.log(`Arquivo de vídeo encontrado em: ${videoPath}`);
+        } catch (error) {
+            console.error(`Erro ao acessar arquivo de vídeo: ${error.message}`);
+            throw new Error(`Arquivo de vídeo não encontrado em: ${videoPath}`);
+        }
+
         const stats = await fs.stat(videoPath);
         console.log(`Tamanho do vídeo: ${stats.size} bytes`);
 
@@ -374,10 +388,6 @@ async function sendWhatsAppMessage() {
         await client.sendMessage(confirmationNumber, '📱 Iniciando envio do vídeo...');
         
         try {
-            if (!await fs.access(videoPath, fs.constants.F_OK)) {
-                throw new Error('Arquivo de vídeo não encontrado');
-            }
-
             console.log('Preparando vídeo para envio...');
             const media = MessageMedia.fromFilePath(videoPath);
             
@@ -389,13 +399,11 @@ async function sendWhatsAppMessage() {
 
             console.log('Iniciando envio do vídeo para o grupo...');
             
-            // Enviar vídeo com a mensagem padrão
             await client.sendMessage(groupId, media, {
                 caption: defaultMessage
             });
             console.log('Vídeo enviado para o grupo com sucesso!');
 
-            // Se tiver uma frase aleatória, enviar em uma mensagem separada
             if (randomPhrase && randomPhrase.trim() !== '') {
                 console.log('Enviando frase aleatória...');
                 await client.sendMessage(groupId, `Mensagem do dia: ${randomPhrase}`);
@@ -408,7 +416,14 @@ async function sendWhatsAppMessage() {
             throw videoError;
         }
 
-        await fs.unlink(videoPath);
+        // Limpar o arquivo de vídeo após o envio
+        try {
+            await fs.unlink(videoPath);
+            console.log('Arquivo de vídeo temporário removido com sucesso');
+        } catch (cleanupError) {
+            console.error('Erro ao remover arquivo temporário:', cleanupError);
+        }
+
         console.log('Processo de envio finalizado com sucesso!');
         
     } catch (error) {
