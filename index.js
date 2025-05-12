@@ -270,6 +270,11 @@ async function sendWhatsAppMessage() {
             return;
         }
 
+        console.log('Verificando conexão com WhatsApp...');
+        if (!client.pupPage) {
+            throw new Error('WhatsApp Web não está inicializado corretamente');
+        }
+
         const daysRemaining = getDaysRemaining();
         const randomPhrase = await getRandomPhrase();
         
@@ -278,7 +283,10 @@ async function sendWhatsAppMessage() {
 
         const groupId = '120363339314665620@g.us';
         
+        console.log('Buscando lista de chats...');
         const chats = await client.getChats();
+        console.log(`Total de chats encontrados: ${chats.length}`);
+        
         const group = chats.find(chat => chat.id._serialized === groupId);
         
         if (!group) {
@@ -327,6 +335,7 @@ async function sendWhatsAppMessage() {
         } catch (videoError) {
             console.error('Erro ao enviar vídeo:', videoError);
             await client.sendMessage(confirmationNumber, '❌ Erro ao enviar vídeo: ' + videoError.message);
+            throw videoError;
         }
 
         await fs.unlink(videoPath);
@@ -340,6 +349,7 @@ async function sendWhatsAppMessage() {
         } catch (confirmationError) {
             console.error('Erro ao enviar confirmação:', confirmationError);
         }
+        throw error;
     }
 }
 
