@@ -120,8 +120,19 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--disable-gpu'
-        ]
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-default-apps',
+            '--disable-translate',
+            '--disable-sync',
+            '--disable-background-networking',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--safebrowsing-disable-auto-update',
+            '--js-flags=--max-old-space-size=512'
+        ],
+        ignoreHTTPSErrors: true
     }
 });
 
@@ -261,6 +272,73 @@ async function getRandomPhrase() {
     }
 }
 
+// Variável para controlar se já está em execução
+let isRunning = false;
+
+// Função para verificar vídeo e enviar mensagem
+async function checkAndSendVideo() {
+    if (isRunning) {
+        console.log('Já existe uma verificação em andamento...');
+        return false;
+    }
+
+    try {
+        isRunning = true;
+        console.log('Iniciando nova verificação de vídeo...');
+        
+        // Adiciona timeout de 5 minutos para a verificação
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout: Verificação demorou mais de 5 minutos')), 5 * 60 * 1000);
+        });
+
+        const videoCheckPromise = (async () => {
+            const videoPath = await downloadInstagramVideo();
+            if (videoPath) {
+                console.log('Vídeo novo encontrado! Iniciando envio...');
+                await sendWhatsAppMessage();
+                return true;
+            }
+            console.log('Nenhum vídeo novo encontrado.');
+            return false;
+        })();
+
+        const result = await Promise.race([videoCheckPromise, timeoutPromise]);
+        return result;
+    } catch (error) {
+        console.error('Erro durante verificação/envio:', error.message);
+        return false;
+    } finally {
+        isRunning = false;
+        console.log('Verificação finalizada.');
+    }
+}
+
+// Função para iniciar o processo de verificação
+async function startVideoCheck() {
+    console.log('Iniciando processo de verificação de vídeos...');
+    let videoFound = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!videoFound && attempts < maxAttempts) {
+        attempts++;
+        console.log(`Tentativa ${attempts} de ${maxAttempts}...`);
+        
+        videoFound = await checkAndSendVideo();
+        
+        if (!videoFound) {
+            console.log(`Aguardando 30 minutos para próxima verificação... (Tentativa ${attempts}/${maxAttempts})`);
+            await new Promise(resolve => setTimeout(resolve, 30 * 60 * 1000));
+        }
+    }
+    
+    if (videoFound) {
+        console.log('Vídeo enviado com sucesso! Próxima verificação às 7:00 do próximo dia.');
+    } else {
+        console.log(`Máximo de tentativas (${maxAttempts}) atingido. Próxima verificação às 7:00 do próximo dia.`);
+    }
+}
+
 // Função para enviar mensagem no WhatsApp
 async function sendWhatsAppMessage() {
     try {
@@ -283,29 +361,24 @@ async function sendWhatsAppMessage() {
 
         const groupId = '120363339314665620@g.us';
         
-        console.log('Buscando lista de chats...');
-        const chats = await client.getChats();
-        console.log(`Total de chats encontrados: ${chats.length}`);
-        
-        console.log(`Enviando mensagem para o grupo: ${groupId}`);
-        
+        console.log('Verificando conexão com o grupo...');
         const stats = await fs.stat(videoPath);
         console.log(`Tamanho do vídeo: ${stats.size} bytes`);
 
         console.log('Enviando cópia do vídeo para o PV...');
         const confirmationNumber = '5514982276185@c.us';
         
-        await client.sendMessage(confirmationNumber, '📱 Enviando cópia do vídeo...');
+        await client.sendMessage(confirmationNumber, '📱 Iniciando envio do vídeo...');
         
         try {
             if (!await fs.access(videoPath, fs.constants.F_OK)) {
                 throw new Error('Arquivo de vídeo não encontrado');
             }
 
-            console.log('Criando MessageMedia do vídeo...');
+            console.log('Preparando vídeo para envio...');
             const media = MessageMedia.fromFilePath(videoPath);
             
-            console.log('Enviando vídeo...');
+            console.log('Enviando vídeo para PV...');
             await client.sendMessage(confirmationNumber, media);
             console.log('Cópia enviada com sucesso!');
 
@@ -321,7 +394,7 @@ async function sendWhatsAppMessage() {
 
             // Se tiver uma frase aleatória, enviar em uma mensagem separada
             if (randomPhrase && randomPhrase.trim() !== '') {
-                console.log('Enviando frase aleatória em mensagem separada...');
+                console.log('Enviando frase aleatória...');
                 await client.sendMessage(groupId, `Mensagem do dia: ${randomPhrase}`);
                 console.log('Frase aleatória enviada com sucesso!');
             }
@@ -333,6 +406,7 @@ async function sendWhatsAppMessage() {
         }
 
         await fs.unlink(videoPath);
+        console.log('Processo de envio finalizado com sucesso!');
         
     } catch (error) {
         console.error('Erro ao enviar mensagem:', error);
@@ -345,50 +419,6 @@ async function sendWhatsAppMessage() {
         }
         throw error;
     }
-}
-
-// Variável para controlar se já está em execução
-let isRunning = false;
-
-// Função para verificar vídeo e enviar mensagem
-async function checkAndSendVideo() {
-    if (isRunning) {
-        console.log('Já existe uma verificação em andamento...');
-        return false;
-    }
-
-    try {
-        isRunning = true;
-        const videoPath = await downloadInstagramVideo();
-        if (videoPath) {
-            console.log('Vídeo novo encontrado! Enviando mensagem...');
-            await sendWhatsAppMessage();
-            return true;
-        }
-        console.log('Nenhum vídeo novo encontrado. Tentando novamente em 30 minutos...');
-        return false;
-    } catch (error) {
-        console.error('Erro ao verificar/enviar vídeo:', error);
-        return false;
-    } finally {
-        isRunning = false;
-    }
-}
-
-// Função para iniciar o processo de verificação
-async function startVideoCheck() {
-    console.log('Iniciando verificação de vídeos...');
-    let videoFound = false;
-    
-    while (!videoFound) {
-        videoFound = await checkAndSendVideo();
-        if (!videoFound) {
-            console.log('Aguardando 30 minutos para próxima verificação...');
-            await new Promise(resolve => setTimeout(resolve, 30 * 60 * 1000)); // 30 minutos
-        }
-    }
-    
-    console.log('Vídeo enviado com sucesso! Próxima verificação às 7:00 do próximo dia.');
 }
 
 // Configurar evento de QR Code do WhatsApp
