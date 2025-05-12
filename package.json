@@ -1,0 +1,17 @@
+{
+  "name": "instagram-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "Bot para baixar vídeos do Instagram e enviar para WhatsApp",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "instagram-private-api": "^1.45.3",
+    "whatsapp-web.js": "1.28.0",
+    "qrcode-terminal": "^0.12.0",
+    "node-cron": "^3.0.3",
+    "moment": "^2.30.1",
+    "axios": "^1.6.7"
+  }
+}
