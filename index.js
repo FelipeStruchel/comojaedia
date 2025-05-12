@@ -25,7 +25,6 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu'
         ],
-        executablePath: '/usr/bin/google-chrome',
         headless: true
     }
 });
