@@ -112,6 +112,7 @@ const password = 'eusouumbot1234';
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -120,8 +121,7 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--disable-gpu'
-        ],
-        headless: true
+        ]
     }
 });
 
@@ -410,15 +410,15 @@ client.on('ready', async () => {
     // Aguarda 5 segundos para garantir que o WhatsApp Web está completamente inicializado
     await new Promise(resolve => setTimeout(resolve, 5000));
     
-    // Inicia a verificação imediatamente
-    console.log('Iniciando verificação de vídeos...');
-    startVideoCheck();
-    
     // Agendar tarefa para rodar todos os dias às 7:00
     cron.schedule('0 7 * * *', () => {
         console.log('Iniciando verificação diária de vídeos...');
         startVideoCheck();
     });
+
+    // Inicia a verificação apenas uma vez após a conexão
+    console.log('Iniciando primeira verificação de vídeos...');
+    startVideoCheck();
 });
 
 // Iniciar o cliente WhatsApp

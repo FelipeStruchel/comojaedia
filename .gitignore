@@ -15,7 +15,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Arquivos do WhatsApp Web
-.wwebjs_auth/
 .wwebjs_cache/
 
 # Arquivos do sistema
