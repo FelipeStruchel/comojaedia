@@ -42,4 +42,8 @@ coverage/
 
 # Arquivos de cache
 .cache/
-.temp/ 
+.temp/
+
+# Arquivos adicionais
+whatsapp-session/
+temp/ 

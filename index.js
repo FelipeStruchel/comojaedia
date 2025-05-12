@@ -117,7 +117,7 @@ const password = 'eusouumbot1234';
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: "whatsapp-bot",
-        dataPath: "/tmp/whatsapp-session"
+        dataPath: "./whatsapp-session"
     }),
     puppeteer: {
         headless: true,
