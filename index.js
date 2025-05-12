@@ -108,28 +108,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Função para verificar e instalar o Chrome
-async function setupChrome() {
-    try {
-        console.log('Verificando instalação do Chrome...');
-        await execPromise('which google-chrome');
-        console.log('Chrome encontrado!');
-    } catch (error) {
-        console.log('Chrome não encontrado, tentando instalar...');
-        try {
-            await execPromise('apt-get update && apt-get install -y wget gnupg2');
-            await execPromise('wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -');
-            await execPromise('echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list');
-            await execPromise('apt-get update && apt-get install -y google-chrome-stable');
-            await execPromise('ln -s /usr/bin/google-chrome-stable /usr/bin/google-chrome');
-            console.log('Chrome instalado com sucesso!');
-        } catch (installError) {
-            console.error('Erro ao instalar Chrome:', installError);
-            throw installError;
-        }
-    }
-}
-
 // Configuração do Instagram
 const ig = new IgApiClient();
 const username = 'feleaokdt';
@@ -143,7 +121,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome',
+        executablePath: '/usr/bin/google-chrome',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -492,16 +470,8 @@ client.on('ready', async () => {
 });
 
 // Iniciar o servidor Express
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
     console.log(`API rodando na porta ${PORT}`);
-    
-    try {
-        await setupChrome();
-        console.log('Configuração do Chrome concluída, iniciando WhatsApp...');
-        // Iniciar o cliente WhatsApp
-        client.initialize();
-    } catch (error) {
-        console.error('Erro na configuração inicial:', error);
-        process.exit(1);
-    }
+    // Iniciar o cliente WhatsApp
+    client.initialize();
 }); 
