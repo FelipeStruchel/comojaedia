@@ -161,30 +161,18 @@ const client = new Client({
         dataPath: path.join(__dirname, '.wwebjs_auth')
     }),
     puppeteer: {
-        headless: false,
-        executablePath: '/usr/bin/chromium',
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-extensions',
-            '--disable-default-apps',
-            '--disable-translate',
-            '--disable-sync',
-            '--disable-background-networking',
-            '--disable-features=IsolateOrigins,site-per-process',
-            '--disable-site-isolation-trials',
-            '--js-flags=--max-old-space-size=128',
-            '--disable-software-rasterizer',
-            '--disable-dev-tools',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-accelerated-2d-canvas',
-            '--disable-features=site-per-process'
+            '--disable-gpu'
         ],
-        ignoreHTTPSErrors: true,
-        timeout: 60000
+        executablePath: '/usr/bin/chromium'
     }
 });
 
