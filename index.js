@@ -149,8 +149,8 @@ app.get('/health', (req, res) => {
 
 // Configuração do Instagram
 const ig = new IgApiClient();
-const username = 'feleaokdt';
-const password = 'eusouumbot1234';
+const username = 'feleaokdtsecond';
+const password = '123Mudar@';
 
 console.log('Iniciando configuração do WhatsApp...');
 
@@ -166,13 +166,15 @@ const client = new Client({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-software-rasterizer',
+            '--disable-features=site-per-process',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
         ],
-        executablePath: '/usr/bin/chromium'
+        executablePath: '/usr/bin/google-chrome',
+        timeout: 60000
     }
 });
 
@@ -528,9 +530,7 @@ client.on('ready', async () => {
         startVideoCheck();
     });
 
-    // Inicia a verificação apenas uma vez após a conexão
-    console.log('Iniciando primeira verificação de vídeos...');
-    startVideoCheck();
+    console.log('Cron agendado com sucesso!');
 });
 
 // Iniciar o servidor Express
