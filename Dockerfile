@@ -1,37 +1,56 @@
 FROM node:18-slim
 
-# Instalar dependências do Chrome
+# Instalar dependências necessárias
 RUN apt-get update && apt-get install -y \
     wget \
-    gnupg2 \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    gnupg \
+    ca-certificates \
+    procps \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar Google Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        google-chrome-stable \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
-    && npm cache clean --force
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
 
 # Criar diretório da aplicação
 WORKDIR /app
 
-# Copiar apenas package.json primeiro
+# Copiar arquivos do projeto
 COPY package*.json ./
+COPY index.js ./
+COPY public ./public
 
 # Instalar dependências
 RUN npm install --production --no-optional
-
-# Copiar o resto dos arquivos
-COPY . .
 
 # Expor porta
 EXPOSE 3000
 
 # Configurar variáveis de ambiente
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=384"
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 
-# Comando para iniciar
-CMD ["npm", "start"] 
+# Iniciar aplicação
+CMD ["node", "index.js"] 

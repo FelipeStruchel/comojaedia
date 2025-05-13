@@ -13,10 +13,15 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
+console.log('Iniciando aplicação...');
+console.log('Node version:', process.version);
+console.log('Diretório atual:', __dirname);
+
 // Criar diretório para arquivos temporários
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
+    console.log('Diretório temp criado:', tempDir);
 }
 
 // Configuração do Express
@@ -33,11 +38,36 @@ app.use(express.static('public'));
 // Caminho para o arquivo de frases
 const frasesPath = path.join(__dirname, 'frases.json');
 
+// Função para inicializar o arquivo de frases
+async function inicializarFrases() {
+    try {
+        if (!fs.existsSync(frasesPath)) {
+            console.log('Arquivo de frases não encontrado. Criando novo arquivo...');
+            await fsPromises.writeFile(frasesPath, JSON.stringify({ frases: [] }, null, 2));
+            console.log('Arquivo de frases criado com sucesso!');
+        } else {
+            // Verifica se o arquivo tem conteúdo válido
+            const data = await fsPromises.readFile(frasesPath, 'utf8');
+            try {
+                JSON.parse(data);
+            } catch (error) {
+                console.log('Arquivo de frases corrompido. Recriando...');
+                await fsPromises.writeFile(frasesPath, JSON.stringify({ frases: [] }, null, 2));
+                console.log('Arquivo de frases recriado com sucesso!');
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao inicializar arquivo de frases:', error);
+    }
+}
+
 // Função para ler as frases
 async function lerFrases() {
     try {
+        await inicializarFrases(); // Garante que o arquivo existe
         const data = await fsPromises.readFile(frasesPath, 'utf8');
-        return JSON.parse(data);
+        const parsed = JSON.parse(data);
+        return parsed.frases ? parsed : { frases: [] };
     } catch (error) {
         console.error('Erro ao ler frases:', error);
         return { frases: [] };
@@ -46,7 +76,11 @@ async function lerFrases() {
 
 // Função para salvar as frases
 async function salvarFrases(data) {
-    await fsPromises.writeFile(frasesPath, JSON.stringify(data, null, 2));
+    try {
+        await fsPromises.writeFile(frasesPath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Erro ao salvar frases:', error);
+    }
 }
 
 // Rota para obter todas as frases
@@ -108,58 +142,80 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Rota de healthcheck
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Configuração do Instagram
 const ig = new IgApiClient();
 const username = 'feleaokdt';
 const password = 'eusouumbot1234';
 
+console.log('Iniciando configuração do WhatsApp...');
+
 // Configuração do WhatsApp
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: "whatsapp-bot",
-        dataPath: "./whatsapp-session"
+        dataPath: path.join(__dirname, '.wwebjs_auth')
     }),
     puppeteer: {
-        headless: true,
-        executablePath: '/usr/bin/google-chrome',
+        headless: false,
+        executablePath: '/usr/bin/chromium',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
             '--disable-gpu',
             '--disable-extensions',
             '--disable-default-apps',
             '--disable-translate',
             '--disable-sync',
             '--disable-background-networking',
-            '--metrics-recording-only',
-            '--mute-audio',
-            '--no-default-browser-check',
-            '--safebrowsing-disable-auto-update',
-            '--js-flags=--max-old-space-size=512',
-            '--disable-web-security',
-            '--allow-running-insecure-content',
-            '--disable-features=IsolateOrigins,site-per-process'
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-site-isolation-trials',
+            '--js-flags=--max-old-space-size=128',
+            '--disable-software-rasterizer',
+            '--disable-dev-tools',
+            '--no-zygote',
+            '--single-process',
+            '--disable-accelerated-2d-canvas',
+            '--disable-features=site-per-process'
         ],
         ignoreHTTPSErrors: true,
         timeout: 60000
     }
 });
 
+console.log('Configuração do WhatsApp concluída');
+
 // Adicionar mais logs para debug
 client.on('disconnected', (reason) => {
     console.log('Cliente desconectado:', reason);
+    console.log('Tentando reconectar em 5 segundos...');
+    setTimeout(() => {
+        console.log('Iniciando reconexão...');
+        client.initialize();
+    }, 5000);
 });
 
 client.on('auth_failure', (error) => {
     console.error('Falha na autenticação:', error);
+    console.log('Detalhes do erro:', JSON.stringify(error, null, 2));
+    console.log('Tentando reiniciar em 5 segundos...');
+    setTimeout(() => {
+        console.log('Reiniciando após falha de autenticação...');
+        client.initialize();
+    }, 5000);
 });
 
 client.on('loading_screen', (percent, message) => {
     console.log('Carregando:', percent, '%', message);
+});
+
+client.on('authenticated', () => {
+    console.log('Autenticado com sucesso!');
 });
 
 // Data alvo
@@ -282,19 +338,21 @@ async function downloadInstagramVideo() {
 // Função para obter uma frase aleatória e removê-la
 async function getRandomPhrase() {
     try {
-        const data = await fsPromises.readFile(path.join(__dirname, 'frases.json'), 'utf8');
-        const { frases } = JSON.parse(data);
-        if (frases.length === 0) return '';
+        const data = await lerFrases();
+        if (!data.frases || data.frases.length === 0) {
+            console.log('Nenhuma frase disponível');
+            return '';
+        }
 
-        const randomIndex = Math.floor(Math.random() * frases.length);
-        const frase = frases[randomIndex];
+        const randomIndex = Math.floor(Math.random() * data.frases.length);
+        const frase = data.frases[randomIndex];
 
-        frases.splice(randomIndex, 1);
-        await fsPromises.writeFile(path.join(__dirname, 'frases.json'), JSON.stringify({ frases }, null, 2));
+        data.frases.splice(randomIndex, 1);
+        await salvarFrases(data);
 
         return frase;
     } catch (error) {
-        console.error('Erro ao ler frases:', error);
+        console.error('Erro ao obter frase aleatória:', error);
         return '';
     }
 }
@@ -460,7 +518,7 @@ async function sendWhatsAppMessage() {
 client.on('qr', (qr) => {
     console.log('QR Code gerado! Escaneie com seu WhatsApp:');
     console.log('----------------------------------------');
-    qrcode.generate(qr, { small: false });
+    qrcode.generate(qr, { small: true });
     console.log('----------------------------------------');
     console.log('Se o QR Code acima não estiver legível, você pode:');
     console.log('1. Aumentar o zoom do terminal');
@@ -471,6 +529,7 @@ client.on('qr', (qr) => {
 // Quando o cliente estiver pronto
 client.on('ready', async () => {
     console.log('Cliente WhatsApp conectado!');
+    console.log('Diretório da sessão:', path.join(__dirname, '.wwebjs_auth'));
     
     // Aguarda 5 segundos para garantir que o WhatsApp Web está completamente inicializado
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -487,8 +546,10 @@ client.on('ready', async () => {
 });
 
 // Iniciar o servidor Express
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`API rodando na porta ${PORT}`);
+    await inicializarFrases(); // Inicializa o arquivo de frases ao iniciar o servidor
+    console.log('Iniciando cliente WhatsApp...');
     // Iniciar o cliente WhatsApp
     client.initialize();
 }); 

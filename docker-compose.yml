@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./whatsapp-session:/app/whatsapp-session
+      - ./.wwebjs_auth:/app/.wwebjs_auth
     environment:
       - NODE_ENV=production
     deploy:
