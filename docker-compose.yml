@@ -1,0 +1,17 @@
+version: '3'
+services:
+  whatsapp-bot:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./whatsapp-session:/app/whatsapp-session
+    environment:
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M 
