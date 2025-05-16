@@ -15,9 +15,23 @@ const execPromise = util.promisify(exec);
 const multer = require('multer');
 const { MEDIA_TYPES, saveMedia, getRandomMedia, removeMedia, prepareMediaForWhatsApp } = require('./mediaManager');
 
-console.log('Iniciando aplicação...');
-console.log('Node version:', process.version);
-console.log('Diretório atual:', __dirname);
+// Função de log melhorada
+function log(message, type = 'info') {
+    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+    const prefix = {
+        info: 'ℹ️',
+        error: '❌',
+        success: '✅',
+        warning: '⚠️',
+        debug: '🔍'
+    }[type] || 'ℹ️';
+
+    console.log(`[${timestamp}] ${prefix} ${message}`);
+}
+
+log('Iniciando aplicação...', 'info');
+log(`Node version: ${process.version}`, 'info');
+log(`Diretório atual: ${__dirname}`, 'info');
 
 // Criar diretório para arquivos temporários
 const tempDir = path.join(__dirname, 'temp');
@@ -186,34 +200,34 @@ const client = new Client({
     }
 });
 
-console.log('Configuração do WhatsApp concluída');
+log('Configuração do WhatsApp concluída', 'success');
 
 // Adicionar mais logs para debug
 client.on('disconnected', (reason) => {
-    console.log('Cliente desconectado:', reason);
-    console.log('Tentando reconectar em 5 segundos...');
+    log(`Cliente desconectado: ${reason}`, 'warning');
+    log('Tentando reconectar em 5 segundos...', 'info');
     setTimeout(() => {
-        console.log('Iniciando reconexão...');
+        log('Iniciando reconexão...', 'info');
         client.initialize();
     }, 5000);
 });
 
 client.on('auth_failure', (error) => {
-    console.error('Falha na autenticação:', error);
-    console.log('Detalhes do erro:', JSON.stringify(error, null, 2));
-    console.log('Tentando reiniciar em 5 segundos...');
+    log(`Falha na autenticação: ${error}`, 'error');
+    log(`Detalhes do erro: ${JSON.stringify(error, null, 2)}`, 'error');
+    log('Tentando reiniciar em 5 segundos...', 'info');
     setTimeout(() => {
-        console.log('Reiniciando após falha de autenticação...');
+        log('Reiniciando após falha de autenticação...', 'info');
         client.initialize();
     }, 5000);
 });
 
 client.on('loading_screen', (percent, message) => {
-    console.log('Carregando:', percent, '%', message);
+    log(`Carregando: ${percent}% ${message}`, 'info');
 });
 
 client.on('authenticated', () => {
-    console.log('Autenticado com sucesso!');
+    log('Autenticado com sucesso!', 'success');
 });
 
 // Data alvo
@@ -245,24 +259,24 @@ async function isVideoFromToday(post) {
 // Função para login no Instagram
 async function loginToInstagram() {
     try {
-        console.log('Iniciando login no Instagram...');
+        log('Iniciando login no Instagram...', 'info');
         ig.state.generateDevice(username);
         
         await randomDelay(2000, 4000);
         
         const loggedInUser = await ig.account.login(username, password);
-        console.log('Login realizado com sucesso!');
+        log('Login realizado com sucesso!', 'success');
         
         await randomDelay(3000, 5000);
         
         return loggedInUser;
     } catch (error) {
-        console.error('Erro no login:', error.message);
+        log(`Erro no login: ${error.message}`, 'error');
         if (error.name === 'IgCheckpointError') {
-            console.log('Verificação de segurança necessária. Por favor:');
-            console.log('1. Acesse o Instagram pelo navegador');
-            console.log('2. Complete a verificação de segurança');
-            console.log('3. Tente novamente em alguns minutos');
+            log('Verificação de segurança necessária. Por favor:', 'warning');
+            log('1. Acesse o Instagram pelo navegador', 'info');
+            log('2. Complete a verificação de segurança', 'info');
+            log('3. Tente novamente em alguns minutos', 'info');
         }
         throw error;
     }
@@ -274,39 +288,39 @@ async function downloadInstagramVideo() {
         await loginToInstagram();
         
         const targetUsername = 'comojaediaa';
-        console.log(`Buscando posts de ${targetUsername}...`);
+        log(`Buscando posts de ${targetUsername}...`, 'info');
         
         const user = await ig.user.searchExact(targetUsername);
         if (!user) {
             throw new Error('Usuário não encontrado');
         }
         
-        console.log('Usuário encontrado, buscando posts...');
+        log('Usuário encontrado, buscando posts...', 'info');
         await randomDelay(2000, 4000);
         
         const feed = ig.feed.user(user.pk);
         const posts = await feed.items();
         
         if (!posts || posts.length === 0) {
-            console.log('Nenhum post encontrado');
+            log('Nenhum post encontrado', 'warning');
             return null;
         }
         
-        console.log(`${posts.length} posts encontrados`);
+        log(`${posts.length} posts encontrados`, 'info');
         
         for (let i = 0; i < posts.length; i++) {
             const post = posts[i];
-            console.log(`Verificando post ${i + 1} de ${posts.length}...`);
+            log(`Verificando post ${i + 1} de ${posts.length}...`, 'info');
             
             if (post.video_versions && post.video_versions.length > 0) {
                 const isFromToday = await isVideoFromToday(post);
                 if (!isFromToday) {
-                    console.log('Vídeo encontrado, mas não é do dia atual');
+                    log('Vídeo encontrado, mas não é do dia atual', 'info');
                     continue;
                 }
 
                 const videoUrl = post.video_versions[0].url;
-                console.log('Vídeo do dia encontrado, baixando...');
+                log('Vídeo do dia encontrado, baixando...', 'info');
                 
                 await randomDelay(2000, 4000);
                 
@@ -318,17 +332,17 @@ async function downloadInstagramVideo() {
                 });
                 
                 const videoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
-                console.log(`Salvando vídeo em: ${videoPath}`);
+                log(`Salvando vídeo em: ${videoPath}`, 'info');
                 await fsPromises.writeFile(videoPath, videoResponse.data);
-                console.log('Vídeo baixado com sucesso!');
+                log('Vídeo baixado com sucesso!', 'success');
                 return videoPath;
             }
         }
         
-        console.log('Nenhum vídeo do dia encontrado nos posts recentes');
+        log('Nenhum vídeo do dia encontrado nos posts recentes', 'warning');
         return null;
     } catch (error) {
-        console.error('Erro ao baixar vídeo:', error.message);
+        log(`Erro ao baixar vídeo: ${error.message}`, 'error');
         return null;
     }
 }
@@ -482,16 +496,16 @@ app.get('/media', async (req, res) => {
     }
 });
 
-// Modificar a função sendWhatsAppMessage para incluir mídia aleatória
+// Função para enviar mensagem do WhatsApp
 async function sendWhatsAppMessage() {
     try {
         const videoPath = await downloadInstagramVideo();
         if (!videoPath) {
-            console.log('Nenhum vídeo encontrado para enviar');
+            log('Nenhum vídeo encontrado para enviar', 'warning');
             return;
         }
 
-        console.log('Verificando conexão com WhatsApp...');
+        log('Verificando conexão com WhatsApp...', 'info');
         if (!client.pupPage) {
             throw new Error('WhatsApp Web não está inicializado corretamente');
         }
@@ -502,99 +516,106 @@ async function sendWhatsAppMessage() {
         const groupId = '120363339314665620@g.us';
         const confirmationNumber = '5514982276185@c.us';
 
-        // Enviar mensagem de contagem regressiva
-        await retryOperation(async () => {
-            await client.sendMessage(groupId, defaultMessage);
-        });
-
-        // Obter e enviar mídia aleatória
-        const randomMedia = await getRandomMedia();
-        if (randomMedia) {
-            const mediaType = randomMedia.type === MEDIA_TYPES.TEXT ? 'mensagem' :
-                            randomMedia.type === MEDIA_TYPES.IMAGE ? 'foto' : 'vídeo';
-            
-            const mediaMessage = await prepareMediaForWhatsApp(randomMedia);
-            
-            if (mediaType === 'mensagem') {
-                await retryOperation(async () => {
-                    await client.sendMessage(groupId, `Mensagem do dia: ${mediaMessage.content}`);
-                });
-            } else {
-                await retryOperation(async () => {
-                    await client.sendMessage(groupId, mediaMessage, {
-                        caption: `${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} do dia:`
-                    });
-                });
-            }
-
-            // Remover mídia após envio
-            await removeMedia(randomMedia.path);
-        }
-
-        // Enviar vídeo do Instagram
+        // 1. Enviar vídeo do Instagram com a mensagem de contagem regressiva como legenda
         try {
             const media = MessageMedia.fromFilePath(videoPath);
             await retryOperation(async () => {
-                await client.sendMessage(groupId, media);
+                await client.sendMessage(groupId, media, {
+                    caption: defaultMessage
+                });
             });
+            log('Vídeo do Instagram enviado com sucesso', 'success');
         } catch (videoError) {
-            console.error('Erro ao enviar vídeo:', videoError);
+            log(`Erro ao enviar vídeo: ${videoError.message}`, 'error');
             await retryOperation(async () => {
                 await client.sendMessage(confirmationNumber, '❌ Erro ao enviar vídeo: ' + videoError.message);
             });
             throw videoError;
         }
 
+        // 2. Obter mídia aleatória
+        const randomMedia = await getRandomMedia();
+        if (randomMedia) {
+            const mediaType = randomMedia.type === MEDIA_TYPES.TEXT ? 'mensagem' :
+                            randomMedia.type === MEDIA_TYPES.IMAGE ? 'foto' : 'vídeo';
+            
+            // 3. Enviar mensagem de texto sobre a mídia sorteada
+            const mediaTypeMessage = `${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} do dia:`;
+            await retryOperation(async () => {
+                await client.sendMessage(groupId, mediaTypeMessage);
+            });
+            log(`Mensagem sobre ${mediaType} enviada`, 'success');
+
+            // 4. Enviar a mídia sem legenda
+            log(`Enviando ${mediaType} do dia...`, 'info');
+            const mediaMessage = await prepareMediaForWhatsApp(randomMedia);
+            
+            if (mediaType === 'mensagem') {
+                await retryOperation(async () => {
+                    await client.sendMessage(groupId, mediaMessage.content);
+                });
+            } else {
+                await retryOperation(async () => {
+                    await client.sendMessage(groupId, mediaMessage);
+                });
+            }
+            log(`${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} do dia enviada com sucesso`, 'success');
+
+            // Remover mídia após envio
+            await removeMedia(randomMedia.path);
+            log('Mídia removida após envio', 'info');
+        }
+
         // Limpar arquivo temporário
         try {
             await fsPromises.unlink(videoPath);
-            console.log('Arquivo de vídeo temporário removido com sucesso');
+            log('Arquivo de vídeo temporário removido com sucesso', 'success');
         } catch (cleanupError) {
-            console.error('Erro ao remover arquivo temporário:', cleanupError);
+            log(`Erro ao remover arquivo temporário: ${cleanupError.message}`, 'error');
         }
 
-        console.log('Processo de envio finalizado com sucesso!');
+        log('Processo de envio finalizado com sucesso!', 'success');
         
     } catch (error) {
-        console.error('Erro ao enviar mensagem:', error);
+        log(`Erro ao enviar mensagem: ${error.message}`, 'error');
         throw error;
     }
 }
 
 // Configurar evento de QR Code do WhatsApp
 client.on('qr', (qr) => {
-    console.log('QR Code gerado! Escaneie com seu WhatsApp:');
-    console.log('----------------------------------------');
+    log('QR Code gerado! Escaneie com seu WhatsApp:', 'info');
+    log('----------------------------------------', 'info');
     qrcode.generate(qr, { small: true });
-    console.log('----------------------------------------');
-    console.log('Se o QR Code acima não estiver legível, você pode:');
-    console.log('1. Aumentar o zoom do terminal');
-    console.log('2. Copiar o QR Code e usar um leitor online');
-    console.log('3. Tentar novamente em alguns segundos');
+    log('----------------------------------------', 'info');
+    log('Se o QR Code acima não estiver legível, você pode:', 'info');
+    log('1. Aumentar o zoom do terminal', 'info');
+    log('2. Copiar o QR Code e usar um leitor online', 'info');
+    log('3. Tentar novamente em alguns segundos', 'info');
 });
 
 // Quando o cliente estiver pronto
 client.on('ready', async () => {
-    console.log('Cliente WhatsApp conectado!');
-    console.log('Diretório da sessão:', path.join(__dirname, '.wwebjs_auth'));
+    log('Cliente WhatsApp conectado!', 'success');
+    log(`Diretório da sessão: ${path.join(__dirname, '.wwebjs_auth')}`, 'info');
     
     // Aguarda 5 segundos para garantir que o WhatsApp Web está completamente inicializado
     await new Promise(resolve => setTimeout(resolve, 5000));
     
     // Agendar tarefa para rodar todos os dias às 7:00
     cron.schedule('0 7 * * *', () => {
-        console.log('Iniciando verificação diária de vídeos...');
+        log('Iniciando verificação diária de vídeos...', 'info');
         startVideoCheck();
     });
 
-    console.log('Cron agendado com sucesso!');
+    log('Cron agendado com sucesso!', 'success');
 });
 
 // Iniciar o servidor Express
 app.listen(PORT, async () => {
-    console.log(`API rodando na porta ${PORT}`);
+    log(`API rodando na porta ${PORT}`, 'success');
     await inicializarFrases(); // Inicializa o arquivo de frases ao iniciar o servidor
-    console.log('Iniciando cliente WhatsApp...');
+    log('Iniciando cliente WhatsApp...', 'info');
     // Iniciar o cliente WhatsApp
     client.initialize();
 }); 
