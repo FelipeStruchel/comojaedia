@@ -12,6 +12,8 @@ const cors = require('cors');
 const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const multer = require('multer');
+const { MEDIA_TYPES, saveMedia, getRandomMedia, removeMedia, prepareMediaForWhatsApp } = require('./mediaManager');
 
 console.log('Iniciando aplicação...');
 console.log('Node version:', process.version);
@@ -171,10 +173,16 @@ const client = new Client({
             '--disable-software-rasterizer',
             '--disable-features=site-per-process',
             '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas'
         ],
         executablePath: '/usr/bin/google-chrome',
-        timeout: 60000
+        timeout: 120000,
+        defaultViewport: null
     }
 });
 
@@ -414,7 +422,67 @@ async function startVideoCheck() {
     }
 }
 
-// Função para enviar mensagem no WhatsApp
+// Função para retry de operações
+async function retryOperation(operation, maxRetries = 3, delay = 5000) {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            console.log(`Tentativa ${i + 1} falhou:`, error.message);
+            if (i < maxRetries - 1) {
+                console.log(`Aguardando ${delay/1000} segundos antes da próxima tentativa...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    throw lastError;
+}
+
+// Configuração do Multer para upload de arquivos
+const upload = multer({
+    dest: path.join(__dirname, 'temp'),
+    limits: {
+        fileSize: 20 * 1024 * 1024 // 20MB
+    }
+});
+
+// Rota para upload de mídia
+app.post('/media', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        }
+
+        const type = req.body.type || MEDIA_TYPES.TEXT;
+        if (!Object.values(MEDIA_TYPES).includes(type)) {
+            return res.status(400).json({ error: 'Tipo de mídia inválido' });
+        }
+
+        const media = await saveMedia(req.file, type);
+        res.status(201).json({ message: 'Mídia salva com sucesso', media });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rota para listar mídia
+app.get('/media', async (req, res) => {
+    try {
+        const type = req.query.type;
+        if (type && !Object.values(MEDIA_TYPES).includes(type)) {
+            return res.status(400).json({ error: 'Tipo de mídia inválido' });
+        }
+
+        const media = await getRandomMedia();
+        res.json(media);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Modificar a função sendWhatsAppMessage para incluir mídia aleatória
 async function sendWhatsAppMessage() {
     try {
         const videoPath = await downloadInstagramVideo();
@@ -429,59 +497,55 @@ async function sendWhatsAppMessage() {
         }
 
         const daysRemaining = getDaysRemaining();
-        const randomPhrase = await getRandomPhrase();
-        
         const defaultMessage = `Faltam ${daysRemaining} dias para a chacrinha e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
 
         const groupId = '120363339314665620@g.us';
-        
-        console.log('Verificando arquivo de vídeo...');
-        try {
-            await fsPromises.access(videoPath, fs.constants.F_OK);
-            console.log(`Arquivo de vídeo encontrado em: ${videoPath}`);
-        } catch (error) {
-            console.error(`Erro ao acessar arquivo de vídeo: ${error.message}`);
-            throw new Error(`Arquivo de vídeo não encontrado em: ${videoPath}`);
-        }
-
-        const stats = await fsPromises.stat(videoPath);
-        console.log(`Tamanho do vídeo: ${stats.size} bytes`);
-
-        console.log('Enviando cópia do vídeo para o PV...');
         const confirmationNumber = '5514982276185@c.us';
-        
-        await client.sendMessage(confirmationNumber, '📱 Iniciando envio do vídeo...');
-        
-        try {
-            console.log('Preparando vídeo para envio...');
-            const media = MessageMedia.fromFilePath(videoPath);
+
+        // Enviar mensagem de contagem regressiva
+        await retryOperation(async () => {
+            await client.sendMessage(groupId, defaultMessage);
+        });
+
+        // Obter e enviar mídia aleatória
+        const randomMedia = await getRandomMedia();
+        if (randomMedia) {
+            const mediaType = randomMedia.type === MEDIA_TYPES.TEXT ? 'mensagem' :
+                            randomMedia.type === MEDIA_TYPES.IMAGE ? 'foto' : 'vídeo';
             
-            console.log('Enviando vídeo para PV...');
-            await client.sendMessage(confirmationNumber, media);
-            console.log('Cópia enviada com sucesso!');
-
-            await client.sendMessage(confirmationNumber, '✅ Vídeo enviado com sucesso!');
-
-            console.log('Iniciando envio do vídeo para o grupo...');
+            const mediaMessage = await prepareMediaForWhatsApp(randomMedia);
             
-            await client.sendMessage(groupId, media, {
-                caption: defaultMessage
-            });
-            console.log('Vídeo enviado para o grupo com sucesso!');
-
-            if (randomPhrase && randomPhrase.trim() !== '') {
-                console.log('Enviando frase aleatória...');
-                await client.sendMessage(groupId, `Mensagem do dia: ${randomPhrase}`);
-                console.log('Frase aleatória enviada com sucesso!');
+            if (mediaType === 'mensagem') {
+                await retryOperation(async () => {
+                    await client.sendMessage(groupId, `Mensagem do dia: ${mediaMessage.content}`);
+                });
+            } else {
+                await retryOperation(async () => {
+                    await client.sendMessage(groupId, mediaMessage, {
+                        caption: `${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} do dia:`
+                    });
+                });
             }
 
+            // Remover mídia após envio
+            await removeMedia(randomMedia.path);
+        }
+
+        // Enviar vídeo do Instagram
+        try {
+            const media = MessageMedia.fromFilePath(videoPath);
+            await retryOperation(async () => {
+                await client.sendMessage(groupId, media);
+            });
         } catch (videoError) {
             console.error('Erro ao enviar vídeo:', videoError);
-            await client.sendMessage(confirmationNumber, '❌ Erro ao enviar vídeo: ' + videoError.message);
+            await retryOperation(async () => {
+                await client.sendMessage(confirmationNumber, '❌ Erro ao enviar vídeo: ' + videoError.message);
+            });
             throw videoError;
         }
 
-        // Limpar o arquivo de vídeo após o envio
+        // Limpar arquivo temporário
         try {
             await fsPromises.unlink(videoPath);
             console.log('Arquivo de vídeo temporário removido com sucesso');
@@ -493,13 +557,6 @@ async function sendWhatsAppMessage() {
         
     } catch (error) {
         console.error('Erro ao enviar mensagem:', error);
-        
-        try {
-            const confirmationNumber = '5514982276185@c.us';
-            await client.sendMessage(confirmationNumber, '❌ Erro ao enviar vídeo: ' + error.message);
-        } catch (confirmationError) {
-            console.error('Erro ao enviar confirmação:', confirmationError);
-        }
         throw error;
     }
 }
