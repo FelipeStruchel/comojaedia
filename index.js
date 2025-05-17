@@ -609,6 +609,31 @@ app.get('/media', async (req, res) => {
     }
 });
 
+// Rota para deletar mídia
+app.delete('/media/:type/:filename', async (req, res) => {
+    try {
+        const { type, filename } = req.params;
+        // Garantir que o tipo seja plural (images, videos, texts)
+        const pluralType = type.endsWith('s') ? type : `${type}s`;
+        const filePath = path.join(__dirname, 'media', pluralType, filename);
+        
+        // Verificar se o arquivo existe
+        if (!fs.existsSync(filePath)) {
+            console.error(`Arquivo não encontrado: ${filePath}`);
+            return res.status(404).json({ error: 'Arquivo não encontrado' });
+        }
+
+        // Remover o arquivo
+        await fsPromises.unlink(filePath);
+        console.log(`Arquivo removido: ${filePath}`);
+        
+        res.json({ message: 'Mídia removida com sucesso' });
+    } catch (error) {
+        console.error('Erro ao remover mídia:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Função para enviar mensagem do WhatsApp
 async function sendWhatsAppMessage() {
     try {

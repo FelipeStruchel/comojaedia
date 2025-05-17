@@ -177,7 +177,15 @@ async function addFrase(frase) {
 // Deletar conteúdo
 async function deleteContent(type, identifier) {
     try {
-        const endpoint = type === 'text' ? `/frases/${identifier}` : `/media/${encodeURIComponent(identifier)}`;
+        let endpoint;
+        if (type === 'text') {
+            endpoint = `/frases/${identifier}`;
+        } else {
+            // Extrair apenas o nome do arquivo da URL
+            const filename = identifier.split('/').pop();
+            endpoint = `/media/${type}/${filename}`;
+        }
+
         const response = await fetch(endpoint, {
             method: 'DELETE'
         });
@@ -189,6 +197,7 @@ async function deleteContent(type, identifier) {
             throw new Error('Erro ao remover conteúdo');
         }
     } catch (error) {
+        console.error('Erro ao deletar conteúdo:', error);
         showToast(error.message, 'error');
     }
 }
