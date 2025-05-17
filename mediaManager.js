@@ -23,6 +23,7 @@ const MEDIA_DIRS = {
 async function initializeDirectories() {
     for (const dir of Object.values(MEDIA_DIRS)) {
         await fs.mkdir(dir, { recursive: true });
+        console.log(`Diretório criado/verificado: ${dir}`);
     }
 }
 

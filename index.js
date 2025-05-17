@@ -562,7 +562,19 @@ app.post('/media', upload.single('file'), async (req, res) => {
 app.get('/media/:type/:filename', (req, res) => {
     const { type, filename } = req.params;
     const filePath = path.join(__dirname, 'media', type, filename);
-    res.sendFile(filePath);
+    
+    // Verificar se o arquivo existe
+    if (!fs.existsSync(filePath)) {
+        console.error(`Arquivo não encontrado: ${filePath}`);
+        return res.status(404).json({ error: 'Arquivo não encontrado' });
+    }
+    
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error(`Erro ao enviar arquivo ${filePath}:`, err);
+            res.status(500).json({ error: 'Erro ao enviar arquivo' });
+        }
+    });
 });
 
 // Rota para listar mídia
