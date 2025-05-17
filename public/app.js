@@ -315,7 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Configurar área de drag and drop
-const mediaFile = document.getElementById('mediaFile');
 const uploadArea = document.createElement('div');
 uploadArea.className = 'upload-area';
 uploadArea.innerHTML = `
