@@ -33,11 +33,34 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
+// Gerenciamento de Tabs
+const textTab = document.getElementById('textTab');
+const mediaTab = document.getElementById('mediaTab');
+const textForm = document.getElementById('textForm');
+const mediaForm = document.getElementById('mediaForm');
+
+textTab.addEventListener('click', () => {
+    textTab.classList.add('bg-indigo-600', 'text-white');
+    textTab.classList.remove('bg-gray-200', 'text-gray-700');
+    mediaTab.classList.add('bg-gray-200', 'text-gray-700');
+    mediaTab.classList.remove('bg-indigo-600', 'text-white');
+    textForm.classList.remove('hidden');
+    mediaForm.classList.add('hidden');
+});
+
+mediaTab.addEventListener('click', () => {
+    mediaTab.classList.add('bg-indigo-600', 'text-white');
+    mediaTab.classList.remove('bg-gray-200', 'text-gray-700');
+    textTab.classList.add('bg-gray-200', 'text-gray-700');
+    textTab.classList.remove('bg-indigo-600', 'text-white');
+    mediaForm.classList.remove('hidden');
+    textForm.classList.add('hidden');
+});
+
 // Gerenciamento de Frases
-const fraseForm = document.getElementById('fraseForm');
 const fraseText = document.getElementById('fraseText');
 const charCount = document.getElementById('charCount');
-const frasesItems = document.getElementById('frasesItems');
+const contentItems = document.getElementById('contentItems');
 
 // Atualizar contador de caracteres
 fraseText.addEventListener('input', () => {
@@ -50,27 +73,68 @@ fraseText.addEventListener('input', () => {
     }
 });
 
-// Carregar frases
-async function loadFrases() {
+// Carregar conteúdo
+async function loadContent() {
     try {
-        const response = await fetch('/frases');
-        const frases = await response.json();
+        // Carregar frases
+        const frasesResponse = await fetch('/frases');
+        const frases = await frasesResponse.json();
         
-        frasesItems.innerHTML = frases.map((frase, index) => `
-            <div class="bg-gray-50 p-4 rounded-lg flex justify-between items-start group">
-                <p class="text-gray-800 flex-1 mr-4">${frase}</p>
-                <button 
-                    onclick="deleteFrase(${index})"
-                    class="text-red-500 hover:text-red-700 transition-colors"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        `).join('');
+        // Carregar mídias
+        const mediaResponse = await fetch('/media');
+        const media = await mediaResponse.json();
+        
+        // Combinar e ordenar conteúdo
+        const content = [
+            ...frases.map((frase, index) => ({
+                type: 'text',
+                content: frase,
+                index
+            })),
+            ...media.map(item => ({
+                type: item.type,
+                content: item.path,
+                fileName: item.fileName
+            }))
+        ].sort((a, b) => b.index - a.index);
+
+        contentItems.innerHTML = content.map(item => {
+            if (item.type === 'text') {
+                return `
+                    <div class="bg-gray-50 p-4 rounded-lg flex justify-between items-start group">
+                        <p class="text-gray-800 flex-1 mr-4">${item.content}</p>
+                        <button 
+                            onclick="deleteContent('text', ${item.index})"
+                            class="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            } else {
+                const isImage = item.type === 'image';
+                return `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        ${isImage ? 
+                            `<img src="${item.content}" alt="${item.fileName}" class="max-w-full h-auto rounded-lg mb-2">` :
+                            `<video src="${item.content}" controls class="max-w-full h-auto rounded-lg mb-2"></video>`
+                        }
+                        <button 
+                            onclick="deleteContent('media', '${item.content}')"
+                            class="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+        }).join('');
     } catch (error) {
-        showToast('Erro ao carregar frases', 'error');
+        showToast('Erro ao carregar conteúdo', 'error');
     }
 }
 
@@ -87,9 +151,9 @@ async function addFrase(frase) {
 
         if (response.ok) {
             showToast('Frase adicionada com sucesso');
-            fraseForm.reset();
+            fraseText.value = '';
             charCount.textContent = '0';
-            loadFrases();
+            loadContent();
         } else {
             const error = await response.json();
             throw new Error(error.error);
@@ -99,26 +163,27 @@ async function addFrase(frase) {
     }
 }
 
-// Deletar frase
-async function deleteFrase(index) {
+// Deletar conteúdo
+async function deleteContent(type, identifier) {
     try {
-        const response = await fetch(`/frases/${index}`, {
+        const endpoint = type === 'text' ? `/frases/${identifier}` : `/media/${encodeURIComponent(identifier)}`;
+        const response = await fetch(endpoint, {
             method: 'DELETE'
         });
 
         if (response.ok) {
-            showToast('Frase removida com sucesso');
-            loadFrases();
+            showToast('Conteúdo removido com sucesso');
+            loadContent();
         } else {
-            throw new Error('Erro ao remover frase');
+            throw new Error('Erro ao remover conteúdo');
         }
     } catch (error) {
         showToast(error.message, 'error');
     }
 }
 
-// Manipulador do formulário de frases
-fraseForm.addEventListener('submit', (e) => {
+// Manipulador do formulário de texto
+textForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const frase = fraseText.value.trim();
     if (frase) {
@@ -126,62 +191,10 @@ fraseForm.addEventListener('submit', (e) => {
     }
 });
 
-// Gerenciamento de mídia
-const uploadForm = document.getElementById('uploadForm');
-const mediaItems = document.getElementById('mediaItems');
-
-// Função para carregar mídias
-async function loadMedia() {
-    try {
-        const response = await fetch('/media');
-        const media = await response.json();
-        
-        mediaItems.innerHTML = media.map(item => `
-            <div class="media-item bg-white rounded-lg shadow-md overflow-hidden">
-                ${item.type === 'image' ? `
-                    <img src="${item.path}" alt="${item.fileName}" class="media-preview">
-                ` : item.type === 'video' ? `
-                    <video src="${item.path}" class="media-preview" controls></video>
-                ` : `
-                    <div class="p-4">
-                        <p class="text-gray-800">${item.content}</p>
-                    </div>
-                `}
-                <button class="action-button" onclick="deleteMedia('${item.path}')">
-                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        `).join('');
-    } catch (error) {
-        showToast('Erro ao carregar mídias', 'error');
-    }
-}
-
-// Função para deletar mídia
-async function deleteMedia(path) {
-    try {
-        const response = await fetch(`/media/${encodeURIComponent(path)}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showToast('Mídia removida com sucesso');
-            loadMedia();
-        } else {
-            throw new Error('Erro ao remover mídia');
-        }
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
-}
-
-// Manipulador do formulário de upload
-uploadForm.addEventListener('submit', async (e) => {
+// Manipulador do formulário de mídia
+mediaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const mediaType = document.getElementById('mediaType').value;
     const fileInput = document.getElementById('mediaFile');
     const file = fileInput.files[0];
 
@@ -192,7 +205,7 @@ uploadForm.addEventListener('submit', async (e) => {
 
     try {
         const formData = new FormData();
-        formData.append('type', mediaType);
+        formData.append('type', file.type.startsWith('image/') ? 'image' : 'video');
         formData.append('file', file);
 
         const response = await fetch('/media', {
@@ -202,8 +215,8 @@ uploadForm.addEventListener('submit', async (e) => {
 
         if (response.ok) {
             showToast('Mídia enviada com sucesso');
-            uploadForm.reset();
-            loadMedia();
+            mediaForm.reset();
+            loadContent();
         } else {
             const error = await response.json();
             throw new Error(error.error);
@@ -245,6 +258,5 @@ uploadArea.addEventListener('drop', (e) => {
 
 // Carregar dados ao iniciar
 document.addEventListener('DOMContentLoaded', () => {
-    loadFrases();
-    loadMedia();
+    loadContent();
 }); 
