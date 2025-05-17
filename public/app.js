@@ -33,6 +33,99 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
+// Gerenciamento de Frases
+const fraseForm = document.getElementById('fraseForm');
+const fraseText = document.getElementById('fraseText');
+const charCount = document.getElementById('charCount');
+const frasesItems = document.getElementById('frasesItems');
+
+// Atualizar contador de caracteres
+fraseText.addEventListener('input', () => {
+    const count = fraseText.value.length;
+    charCount.textContent = count;
+    if (count > 4000) {
+        charCount.classList.add('text-red-500');
+    } else {
+        charCount.classList.remove('text-red-500');
+    }
+});
+
+// Carregar frases
+async function loadFrases() {
+    try {
+        const response = await fetch('/frases');
+        const frases = await response.json();
+        
+        frasesItems.innerHTML = frases.map((frase, index) => `
+            <div class="bg-gray-50 p-4 rounded-lg flex justify-between items-start group">
+                <p class="text-gray-800 flex-1 mr-4">${frase}</p>
+                <button 
+                    onclick="deleteFrase(${index})"
+                    class="text-red-500 hover:text-red-700 transition-colors"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    } catch (error) {
+        showToast('Erro ao carregar frases', 'error');
+    }
+}
+
+// Adicionar frase
+async function addFrase(frase) {
+    try {
+        const response = await fetch('/frases', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ frase })
+        });
+
+        if (response.ok) {
+            showToast('Frase adicionada com sucesso');
+            fraseForm.reset();
+            charCount.textContent = '0';
+            loadFrases();
+        } else {
+            const error = await response.json();
+            throw new Error(error.error);
+        }
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// Deletar frase
+async function deleteFrase(index) {
+    try {
+        const response = await fetch(`/frases/${index}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('Frase removida com sucesso');
+            loadFrases();
+        } else {
+            throw new Error('Erro ao remover frase');
+        }
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// Manipulador do formulário de frases
+fraseForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const frase = fraseText.value.trim();
+    if (frase) {
+        addFrase(frase);
+    }
+});
+
 // Gerenciamento de mídia
 const uploadForm = document.getElementById('uploadForm');
 const mediaItems = document.getElementById('mediaItems');
@@ -92,7 +185,7 @@ uploadForm.addEventListener('submit', async (e) => {
     const fileInput = document.getElementById('mediaFile');
     const file = fileInput.files[0];
 
-    if (!file && mediaType !== 'text') {
+    if (!file) {
         showToast('Por favor, selecione um arquivo', 'error');
         return;
     }
@@ -100,12 +193,7 @@ uploadForm.addEventListener('submit', async (e) => {
     try {
         const formData = new FormData();
         formData.append('type', mediaType);
-        
-        if (mediaType === 'text') {
-            formData.append('content', fileInput.value);
-        } else {
-            formData.append('file', file);
-        }
+        formData.append('file', file);
 
         const response = await fetch('/media', {
             method: 'POST',
@@ -155,7 +243,8 @@ uploadArea.addEventListener('drop', (e) => {
     mediaFile.files = e.dataTransfer.files;
 });
 
-// Carregar mídias ao iniciar
+// Carregar dados ao iniciar
 document.addEventListener('DOMContentLoaded', () => {
+    loadFrases();
     loadMedia();
 }); 
