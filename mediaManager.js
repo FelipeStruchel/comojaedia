@@ -14,9 +14,9 @@ const MEDIA_TYPES = {
 
 // Diretórios para cada tipo de mídia
 const MEDIA_DIRS = {
-    [MEDIA_TYPES.TEXT]: path.join(__dirname, 'media', 'texts'),
-    [MEDIA_TYPES.IMAGE]: path.join(__dirname, 'media', 'images'),
-    [MEDIA_TYPES.VIDEO]: path.join(__dirname, 'media', 'videos')
+    [MEDIA_TYPES.TEXT]: path.join(__dirname, 'media', 'text'),
+    [MEDIA_TYPES.IMAGE]: path.join(__dirname, 'media', 'image'),
+    [MEDIA_TYPES.VIDEO]: path.join(__dirname, 'media', 'video')
 };
 
 // Criar diretórios se não existirem

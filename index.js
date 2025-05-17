@@ -561,7 +561,9 @@ app.post('/media', upload.single('file'), async (req, res) => {
 // Rota para servir arquivos de mídia
 app.get('/media/:type/:filename', (req, res) => {
     const { type, filename } = req.params;
-    const filePath = path.join(__dirname, 'media', type, filename);
+    // Garantir que o tipo seja singular (image, video, text)
+    const singularType = type.replace(/s$/, '');
+    const filePath = path.join(__dirname, 'media', singularType, filename);
     
     // Verificar se o arquivo existe
     if (!fs.existsSync(filePath)) {
