@@ -30,27 +30,23 @@ async function initializeDirectories() {
 async function checkFileSize(filePath) {
     const stats = await fs.stat(filePath);
     if (stats.size > MAX_FILE_SIZE) {
-        throw new Error(`Arquivo muito grande. Tamanho máximo permitido: ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+        throw new Error(`Arquivo muito grande. Tamanho máximo: ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
     }
-    return stats.size;
 }
 
-// Verificar tamanho total da pasta
-async function checkFolderSize(dirPath) {
-    const files = await fs.readdir(dirPath);
+// Verificar tamanho da pasta
+async function checkFolderSize(dir) {
+    const files = await fs.readdir(dir);
     let totalSize = 0;
     
     for (const file of files) {
-        const filePath = path.join(dirPath, file);
-        const stats = await fs.stat(filePath);
+        const stats = await fs.stat(path.join(dir, file));
         totalSize += stats.size;
     }
     
     if (totalSize > MAX_FOLDER_SIZE) {
-        throw new Error(`Pasta muito grande. Tamanho máximo permitido: ${MAX_FOLDER_SIZE / (1024 * 1024 * 1024)}GB`);
+        throw new Error(`Pasta muito grande. Tamanho máximo: ${MAX_FOLDER_SIZE / (1024 * 1024 * 1024)}GB`);
     }
-    
-    return totalSize;
 }
 
 // Salvar arquivo de mídia
@@ -74,29 +70,37 @@ async function saveMedia(file, type) {
     };
 }
 
-// Obter mídia aleatória
-async function getRandomMedia() {
+// Listar todas as mídias
+async function listAllMedia() {
     await initializeDirectories();
     
-    // Primeiro, decide o tipo de mídia
-    const types = Object.values(MEDIA_TYPES);
-    const randomType = types[Math.floor(Math.random() * types.length)];
+    const allMedia = [];
     
-    const dir = MEDIA_DIRS[randomType];
-    const files = await fs.readdir(dir);
+    for (const [type, dir] of Object.entries(MEDIA_DIRS)) {
+        const files = await fs.readdir(dir);
+        
+        for (const file of files) {
+            const filePath = path.join(dir, file);
+            allMedia.push({
+                path: filePath,
+                type,
+                fileName: file
+            });
+        }
+    }
     
-    if (files.length === 0) {
+    return allMedia;
+}
+
+// Obter mídia aleatória
+async function getRandomMedia() {
+    const allMedia = await listAllMedia();
+    
+    if (allMedia.length === 0) {
         return null;
     }
     
-    const randomFile = files[Math.floor(Math.random() * files.length)];
-    const filePath = path.join(dir, randomFile);
-    
-    return {
-        path: filePath,
-        type: randomType,
-        fileName: randomFile
-    };
+    return allMedia[Math.floor(Math.random() * allMedia.length)];
 }
 
 // Remover mídia após envio
@@ -128,5 +132,6 @@ module.exports = {
     removeMedia,
     prepareMediaForWhatsApp,
     checkFileSize,
-    checkFolderSize
+    checkFolderSize,
+    listAllMedia
 }; 

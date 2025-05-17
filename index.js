@@ -13,7 +13,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const multer = require('multer');
-const { MEDIA_TYPES, saveMedia, getRandomMedia, removeMedia, prepareMediaForWhatsApp } = require('./mediaManager');
+const { MEDIA_TYPES, saveMedia, getRandomMedia, removeMedia, prepareMediaForWhatsApp, listAllMedia } = require('./mediaManager');
 
 // Função de log melhorada
 function log(message, type = 'info') {
@@ -566,7 +566,7 @@ app.get('/media', async (req, res) => {
             return res.status(400).json({ error: 'Tipo de mídia inválido' });
         }
 
-        const media = await getRandomMedia();
+        const media = await listAllMedia();
         res.json(media);
     } catch (error) {
         res.status(500).json({ error: error.message });
