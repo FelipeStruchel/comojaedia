@@ -317,11 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Elementos do formulário de mídia
 const mediaFile = document.getElementById('mediaFile');
 const fileError = document.getElementById('fileError');
-const filePreview = document.getElementById('filePreview');
-const imagePreview = document.getElementById('imagePreview');
-const videoPreview = document.getElementById('videoPreview');
-const fileName = document.getElementById('fileName');
-const removeFile = document.getElementById('removeFile');
 const submitButton = document.querySelector('#mediaForm button[type="submit"]');
 const dropZone = document.querySelector('#mediaForm .border-dashed');
 
@@ -396,45 +391,12 @@ function validateFile(file) {
     return { valid: true };
 }
 
-// Função para mostrar preview
-function showPreview(file) {
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
-    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
-
-    if (isImage) {
-        imagePreview.src = URL.createObjectURL(file);
-        imagePreview.classList.remove('hidden');
-        videoPreview.classList.add('hidden');
-    } else if (isVideo) {
-        videoPreview.src = URL.createObjectURL(file);
-        videoPreview.classList.remove('hidden');
-        imagePreview.classList.add('hidden');
-    }
-
-    fileName.textContent = file.name;
-    filePreview.classList.remove('hidden');
-    submitButton.disabled = false;
-}
-
-// Função para limpar preview
-function clearPreview() {
-    imagePreview.src = '';
-    videoPreview.src = '';
-    imagePreview.classList.add('hidden');
-    videoPreview.classList.add('hidden');
-    filePreview.classList.add('hidden');
-    fileName.textContent = '';
-    fileError.classList.add('hidden');
-    fileError.textContent = '';
-    submitButton.disabled = true;
-    mediaFile.value = '';
-}
-
 // Evento de mudança do input de arquivo
 mediaFile.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) {
-        clearPreview();
+        fileError.classList.add('hidden');
+        fileError.textContent = '';
         return;
     }
 
@@ -442,16 +404,11 @@ mediaFile.addEventListener('change', (e) => {
     if (!validation.valid) {
         fileError.textContent = validation.error;
         fileError.classList.remove('hidden');
-        clearPreview();
         return;
     }
 
     fileError.classList.add('hidden');
-    showPreview(file);
 });
-
-// Evento de remover arquivo
-removeFile.addEventListener('click', clearPreview);
 
 // Eventos de drag and drop
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -481,13 +438,11 @@ dropZone.addEventListener('drop', (e) => {
     if (!validation.valid) {
         fileError.textContent = validation.error;
         fileError.classList.remove('hidden');
-        clearPreview();
         return;
     }
 
     mediaFile.files = e.dataTransfer.files;
     fileError.classList.add('hidden');
-    showPreview(file);
 });
 
 // Manipulador do formulário de mídia
@@ -531,7 +486,8 @@ document.getElementById('mediaForm').addEventListener('submit', async (e) => {
 
         if (response.ok) {
             showToast('Mídia enviada com sucesso');
-            clearPreview();
+            mediaFile.value = '';
+            fileError.classList.add('hidden');
             await loadContent();
         } else {
             throw new Error(data.error || 'Erro ao enviar mídia');
