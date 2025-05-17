@@ -191,22 +191,15 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas'
+            '--disable-dev-shm-usage'
         ],
         executablePath: '/usr/bin/google-chrome',
-        timeout: 120000,
-        defaultViewport: null,
-        ignoreHTTPSErrors: true,
-        browserWSEndpoint: null,
-        browserRevision: null,
-        handleSIGINT: true,
-        handleSIGTERM: true,
-        handleSIGHUP: true
+        timeout: 0,
+        defaultViewport: null
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
-    authTimeout: 60000,
+    authTimeout: 0,
     qrQualityOptions: {
         quality: 0.8,
         margin: 4
@@ -218,7 +211,7 @@ log('Configuração do WhatsApp concluída', 'success');
 // Adicionar mais logs para debug
 client.on('disconnected', (reason) => {
     log(`Cliente desconectado: ${reason}`, 'warning');
-    log('Tentando reconectar em 30 segundos...', 'info');
+    log('Tentando reconectar em 60 segundos...', 'info');
     setTimeout(() => {
         log('Iniciando reconexão...', 'info');
         client.initialize().catch(err => {
@@ -229,7 +222,7 @@ client.on('disconnected', (reason) => {
                 client.initialize();
             }, 60000);
         });
-    }, 30000);
+    }, 60000);
 });
 
 client.on('auth_failure', (error) => {
@@ -240,6 +233,31 @@ client.on('auth_failure', (error) => {
         log('Reiniciando após falha de autenticação...', 'info');
         client.initialize();
     }, 60000);
+});
+
+// Adicionar handler para erros não capturados
+process.on('uncaughtException', (error) => {
+    log(`Erro não capturado: ${error.message}`, 'error');
+    log(`Stack: ${error.stack}`, 'error');
+    if (error.message.includes('Protocol error') || error.message.includes('Session closed')) {
+        log('Erro de protocolo detectado, reiniciando em 60 segundos...', 'warning');
+        setTimeout(() => {
+            log('Reiniciando após erro de protocolo...', 'info');
+            client.initialize();
+        }, 60000);
+    }
+});
+
+// Adicionar handler para erros de rejeição não tratados
+process.on('unhandledRejection', (reason, promise) => {
+    log(`Promessa rejeitada não tratada: ${reason}`, 'error');
+    if (reason.message && (reason.message.includes('Protocol error') || reason.message.includes('Session closed'))) {
+        log('Erro de protocolo detectado em promessa, reiniciando em 60 segundos...', 'warning');
+        setTimeout(() => {
+            log('Reiniciando após erro de protocolo em promessa...', 'info');
+            client.initialize();
+        }, 60000);
+    }
 });
 
 client.on('loading_screen', (percent, message) => {
