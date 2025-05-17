@@ -76,13 +76,16 @@ fraseText.addEventListener('input', () => {
 // Carregar conteúdo
 async function loadContent() {
     try {
+        console.log('Carregando conteúdo...');
         // Carregar frases
         const frasesResponse = await fetch('/frases');
         const frases = await frasesResponse.json();
+        console.log('Frases carregadas:', frases);
         
         // Carregar mídias
         const mediaResponse = await fetch('/media');
         const media = await mediaResponse.json();
+        console.log('Mídias carregadas:', media);
         
         // Combinar e ordenar conteúdo
         const content = [
@@ -97,6 +100,13 @@ async function loadContent() {
                 fileName: item.fileName
             }))
         ].sort((a, b) => b.index - a.index);
+
+        console.log('Conteúdo combinado:', content);
+        const contentItems = document.getElementById('contentItems');
+        if (!contentItems) {
+            console.error('Elemento contentItems não encontrado');
+            return;
+        }
 
         contentItems.innerHTML = content.map(item => {
             if (item.type === 'text') {
@@ -134,6 +144,7 @@ async function loadContent() {
             }
         }).join('');
     } catch (error) {
+        console.error('Erro ao carregar conteúdo:', error);
         showToast('Erro ao carregar conteúdo', 'error');
     }
 }
@@ -183,17 +194,41 @@ async function deleteContent(type, identifier) {
 }
 
 // Manipulador do formulário de texto
-textForm.addEventListener('submit', (e) => {
+document.getElementById('textForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const frase = fraseText.value.trim();
+    console.log('Formulário de texto submetido');
+    const frase = document.getElementById('fraseText').value.trim();
     if (frase) {
-        addFrase(frase);
+        try {
+            console.log('Enviando frase:', frase);
+            const response = await fetch('/frases', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ frase })
+            });
+
+            if (response.ok) {
+                showToast('Frase adicionada com sucesso');
+                document.getElementById('fraseText').value = '';
+                document.getElementById('charCount').textContent = '0';
+                loadContent();
+            } else {
+                const error = await response.json();
+                throw new Error(error.error);
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar frase:', error);
+            showToast(error.message, 'error');
+        }
     }
 });
 
 // Manipulador do formulário de mídia
-mediaForm.addEventListener('submit', async (e) => {
+document.getElementById('mediaForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    console.log('Formulário de mídia submetido');
     
     const fileInput = document.getElementById('mediaFile');
     const file = fileInput.files[0];
@@ -204,6 +239,7 @@ mediaForm.addEventListener('submit', async (e) => {
     }
 
     try {
+        console.log('Enviando arquivo:', file.name);
         const formData = new FormData();
         formData.append('type', file.type.startsWith('image/') ? 'image' : 'video');
         formData.append('file', file);
@@ -222,6 +258,7 @@ mediaForm.addEventListener('submit', async (e) => {
             throw new Error(error.error);
         }
     } catch (error) {
+        console.error('Erro ao enviar mídia:', error);
         showToast(error.message, 'error');
     }
 });

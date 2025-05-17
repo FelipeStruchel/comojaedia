@@ -102,9 +102,12 @@ async function salvarFrases(data) {
 // Rota para obter todas as frases
 app.get('/frases', async (req, res) => {
     try {
+        console.log('Buscando frases...');
         const data = await lerFrases();
+        console.log('Frases encontradas:', data.frases);
         res.json(data.frases);
     } catch (error) {
+        console.error('Erro ao buscar frases:', error);
         res.status(500).json({ error: 'Erro ao buscar frases' });
     }
 });
@@ -112,6 +115,7 @@ app.get('/frases', async (req, res) => {
 // Rota para adicionar uma nova frase
 app.post('/frases', async (req, res) => {
     try {
+        console.log('Recebendo nova frase:', req.body);
         const { frase } = req.body;
         if (!frase) {
             return res.status(400).json({ error: 'Frase é obrigatória' });
@@ -127,9 +131,11 @@ app.post('/frases', async (req, res) => {
         const data = await lerFrases();
         data.frases.push(frase);
         await salvarFrases(data);
+        console.log('Frase adicionada com sucesso');
 
         res.status(201).json({ message: 'Frase adicionada com sucesso' });
     } catch (error) {
+        console.error('Erro ao adicionar frase:', error);
         res.status(500).json({ error: 'Erro ao adicionar frase' });
     }
 });
@@ -582,19 +588,23 @@ app.get('/media/:type/:filename', (req, res) => {
 // Rota para listar mídia
 app.get('/media', async (req, res) => {
     try {
+        console.log('Buscando mídias...');
         const type = req.query.type;
         if (type && !Object.values(MEDIA_TYPES).includes(type)) {
             return res.status(400).json({ error: 'Tipo de mídia inválido' });
         }
 
         const media = await listAllMedia();
+        console.log('Mídias encontradas:', media);
         // Modificar os caminhos para URLs relativas
         const mediaWithUrls = media.map(item => ({
             ...item,
             url: `/media/${item.type}/${path.basename(item.path)}`
         }));
+        console.log('Mídias com URLs:', mediaWithUrls);
         res.json(mediaWithUrls);
     } catch (error) {
+        console.error('Erro ao listar mídias:', error);
         res.status(500).json({ error: error.message });
     }
 });
