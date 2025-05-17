@@ -39,23 +39,27 @@ const mediaTab = document.getElementById('mediaTab');
 const textForm = document.getElementById('textForm');
 const mediaForm = document.getElementById('mediaForm');
 
-textTab.addEventListener('click', () => {
-    textTab.classList.add('bg-indigo-600', 'text-white');
-    textTab.classList.remove('bg-gray-200', 'text-gray-700');
-    mediaTab.classList.add('bg-gray-200', 'text-gray-700');
-    mediaTab.classList.remove('bg-indigo-600', 'text-white');
-    textForm.classList.remove('hidden');
-    mediaForm.classList.add('hidden');
-});
+// Função para alternar entre os formulários
+function switchForm(showText) {
+    if (showText) {
+        textTab.classList.add('bg-indigo-600', 'text-white');
+        textTab.classList.remove('bg-gray-200', 'text-gray-700');
+        mediaTab.classList.add('bg-gray-200', 'text-gray-700');
+        mediaTab.classList.remove('bg-indigo-600', 'text-white');
+        textForm.classList.remove('hidden');
+        mediaForm.classList.add('hidden');
+    } else {
+        mediaTab.classList.add('bg-indigo-600', 'text-white');
+        mediaTab.classList.remove('bg-gray-200', 'text-gray-700');
+        textTab.classList.add('bg-gray-200', 'text-gray-700');
+        textTab.classList.remove('bg-indigo-600', 'text-white');
+        mediaForm.classList.remove('hidden');
+        textForm.classList.add('hidden');
+    }
+}
 
-mediaTab.addEventListener('click', () => {
-    mediaTab.classList.add('bg-indigo-600', 'text-white');
-    mediaTab.classList.remove('bg-gray-200', 'text-gray-700');
-    textTab.classList.add('bg-gray-200', 'text-gray-700');
-    textTab.classList.remove('bg-indigo-600', 'text-white');
-    mediaForm.classList.remove('hidden');
-    textForm.classList.add('hidden');
-});
+textTab.addEventListener('click', () => switchForm(true));
+mediaTab.addEventListener('click', () => switchForm(false));
 
 // Gerenciamento de Frases
 const fraseText = document.getElementById('fraseText');
@@ -202,9 +206,10 @@ async function deleteContent(type, identifier) {
     }
 }
 
-// Carregar dados ao iniciar
+// Inicializar com o formulário de texto visível
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, inicializando...');
+    switchForm(true);
     
     // Verificar se os elementos existem
     const textForm = document.getElementById('textForm');
