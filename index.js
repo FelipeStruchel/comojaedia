@@ -191,11 +191,18 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins',
+            '--disable-site-isolation-trials',
+            '--disable-web-security',
+            '--disable-features=BlockInsecurePrivateNetworkRequests'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 0,
-        defaultViewport: null
+        defaultViewport: null,
+        ignoreHTTPSErrors: true,
+        protocolTimeout: 0
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
@@ -239,7 +246,7 @@ client.on('auth_failure', (error) => {
 process.on('uncaughtException', (error) => {
     log(`Erro não capturado: ${error.message}`, 'error');
     log(`Stack: ${error.stack}`, 'error');
-    if (error.message.includes('Protocol error') || error.message.includes('Session closed')) {
+    if (error.message.includes('Protocol error') || error.message.includes('Session closed') || error.message.includes('Target closed')) {
         log('Erro de protocolo detectado, reiniciando em 60 segundos...', 'warning');
         setTimeout(() => {
             log('Reiniciando após erro de protocolo...', 'info');
@@ -251,7 +258,7 @@ process.on('uncaughtException', (error) => {
 // Adicionar handler para erros de rejeição não tratados
 process.on('unhandledRejection', (reason, promise) => {
     log(`Promessa rejeitada não tratada: ${reason}`, 'error');
-    if (reason.message && (reason.message.includes('Protocol error') || reason.message.includes('Session closed'))) {
+    if (reason.message && (reason.message.includes('Protocol error') || reason.message.includes('Session closed') || reason.message.includes('Target closed'))) {
         log('Erro de protocolo detectado em promessa, reiniciando em 60 segundos...', 'warning');
         setTimeout(() => {
             log('Reiniciando após erro de protocolo em promessa...', 'info');
