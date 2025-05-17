@@ -175,30 +175,26 @@ async function addFrase(frase) {
 }
 
 // Deletar conteúdo
-async function deleteContent(type, identifier) {
+async function deleteContent(identifier, type) {
     try {
-        let endpoint;
-        if (type === 'text') {
-            endpoint = `/frases/${identifier}`;
-        } else {
-            // Extrair apenas o nome do arquivo da URL
-            const filename = identifier.split('/').pop();
-            endpoint = `/media/${type}/${filename}`;
-        }
-
+        // Extrair apenas o nome do arquivo do caminho completo
+        const filename = identifier.split('/').pop();
+        const endpoint = `/media/${type}/${filename}`;
+        console.log('Deletando conteúdo:', endpoint);
+        
         const response = await fetch(endpoint, {
             method: 'DELETE'
         });
-
-        if (response.ok) {
-            showToast('Conteúdo removido com sucesso');
-            loadContent();
-        } else {
-            throw new Error('Erro ao remover conteúdo');
+        
+        if (!response.ok) {
+            throw new Error('Erro ao deletar conteúdo');
         }
+        
+        showToast('Conteúdo deletado com sucesso!');
+        await loadContent(); // Recarrega a lista
     } catch (error) {
         console.error('Erro ao deletar conteúdo:', error);
-        showToast(error.message, 'error');
+        showToast('Erro ao deletar conteúdo');
     }
 }
 

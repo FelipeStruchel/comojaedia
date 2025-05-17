@@ -571,6 +571,8 @@ app.get('/media/:type/:filename', (req, res) => {
     const pluralType = type.endsWith('s') ? type : `${type}s`;
     const filePath = path.join(__dirname, 'media', pluralType, filename);
     
+    console.log('Tentando servir arquivo:', filePath);
+    
     // Verificar se o arquivo existe
     if (!fs.existsSync(filePath)) {
         console.error(`Arquivo não encontrado: ${filePath}`);
@@ -616,6 +618,8 @@ app.delete('/media/:type/:filename', async (req, res) => {
         // Garantir que o tipo seja plural (images, videos, texts)
         const pluralType = type.endsWith('s') ? type : `${type}s`;
         const filePath = path.join(__dirname, 'media', pluralType, filename);
+        
+        console.log('Tentando deletar arquivo:', filePath);
         
         // Verificar se o arquivo existe
         if (!fs.existsSync(filePath)) {
