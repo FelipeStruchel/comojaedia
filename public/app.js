@@ -222,6 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (textForm) {
         console.log('Registrando evento do formulário de texto');
+        const submitButton = textForm.querySelector('button[type="submit"]');
+        
         textForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('Formulário de texto submetido');
@@ -233,6 +235,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
+                // Desabilitar botão e mostrar indicador de carregamento
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Enviando...
+                `;
+
                 console.log('Enviando frase:', frase);
                 const response = await fetch('/frases', {
                     method: 'POST',
@@ -256,13 +268,20 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Erro ao adicionar frase:', error);
                 showToast(error.message, 'error');
+            } finally {
+                // Restaurar botão ao estado original
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Adicionar Frase';
             }
         });
     }
 
     if (mediaForm) {
         console.log('Registrando evento do formulário de mídia');
-        mediaForm.addEventListener('submit', async (e) => {
+        const mediaFormElement = mediaForm.querySelector('form');
+        const submitButton = mediaFormElement.querySelector('button[type="submit"]');
+        
+        mediaFormElement.addEventListener('submit', async (e) => {
             e.preventDefault();
             console.log('Formulário de mídia submetido');
             
@@ -274,10 +293,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const validation = validateFile(file);
+            if (!validation.valid) {
+                showToast(validation.error, 'error');
+                return;
+            }
+
             try {
+                // Desabilitar botão e mostrar indicador de carregamento
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Enviando...
+                `;
+
                 console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
                 const formData = new FormData();
-                const type = file.type.startsWith('image/') ? 'image' : 'video';
+                const type = ALLOWED_IMAGE_TYPES.includes(file.type) ? 'image' : 'video';
                 formData.append('type', type);
                 formData.append('file', file);
 
@@ -298,7 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     showToast('Mídia enviada com sucesso');
-                    fileInput.value = ''; // Limpa o input de arquivo
+                    fileInput.value = '';
+                    fileError.classList.add('hidden');
                     await loadContent();
                 } else {
                     throw new Error(data.error || 'Erro ao enviar mídia');
@@ -306,6 +342,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Erro ao enviar mídia:', error);
                 showToast(error.message, 'error');
+            } finally {
+                // Restaurar botão ao estado original
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Enviar Mídia';
             }
         });
     }
@@ -317,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Elementos do formulário de mídia
 const mediaFile = document.getElementById('mediaFile');
 const fileError = document.getElementById('fileError');
-const submitButton = document.querySelector('#mediaForm button[type="submit"]');
 const dropZone = document.querySelector('#mediaForm .border-dashed');
 
 // Configurações de validação
@@ -412,57 +451,4 @@ dropZone.addEventListener('drop', (e) => {
 
     mediaFile.files = e.dataTransfer.files;
     fileError.classList.add('hidden');
-});
-
-// Manipulador do formulário de mídia
-document.getElementById('mediaForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    console.log('Formulário de mídia submetido');
-    
-    const file = mediaFile.files[0];
-    if (!file) {
-        showToast('Por favor, selecione um arquivo', 'error');
-        return;
-    }
-
-    const validation = validateFile(file);
-    if (!validation.valid) {
-        showToast(validation.error, 'error');
-        return;
-    }
-
-    try {
-        console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
-        const formData = new FormData();
-        const type = ALLOWED_IMAGE_TYPES.includes(file.type) ? 'image' : 'video';
-        formData.append('type', type);
-        formData.append('file', file);
-
-        console.log('Dados do formulário:', {
-            type: type,
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type
-        });
-
-        const response = await fetch('/media', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-        console.log('Resposta do servidor:', data);
-
-        if (response.ok) {
-            showToast('Mídia enviada com sucesso');
-            mediaFile.value = '';
-            fileError.classList.add('hidden');
-            await loadContent();
-        } else {
-            throw new Error(data.error || 'Erro ao enviar mídia');
-        }
-    } catch (error) {
-        console.error('Erro ao enviar mídia:', error);
-        showToast(error.message, 'error');
-    }
 }); 
