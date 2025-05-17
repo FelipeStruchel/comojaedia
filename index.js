@@ -192,11 +192,24 @@ const client = new Client({
             '--no-zygote',
             '--single-process',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas'
+            '--disable-accelerated-2d-canvas',
+            '--disable-setuid-sandbox',
+            '--no-sandbox',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins',
+            '--disable-site-isolation-trials'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 120000,
-        defaultViewport: null
+        defaultViewport: null,
+        ignoreHTTPSErrors: true
+    },
+    restartOnAuthFail: true,
+    qrMaxRetries: 5,
+    authTimeout: 60000,
+    qrQualityOptions: {
+        quality: 0.8,
+        margin: 4
     }
 });
 
@@ -208,18 +221,25 @@ client.on('disconnected', (reason) => {
     log('Tentando reconectar em 5 segundos...', 'info');
     setTimeout(() => {
         log('Iniciando reconexão...', 'info');
-        client.initialize();
+        client.initialize().catch(err => {
+            log(`Erro na reconexão: ${err.message}`, 'error');
+            // Tentar novamente após 30 segundos em caso de erro
+            setTimeout(() => {
+                log('Tentando reconexão novamente após erro...', 'info');
+                client.initialize();
+            }, 30000);
+        });
     }, 5000);
 });
 
 client.on('auth_failure', (error) => {
     log(`Falha na autenticação: ${error}`, 'error');
     log(`Detalhes do erro: ${JSON.stringify(error, null, 2)}`, 'error');
-    log('Tentando reiniciar em 5 segundos...', 'info');
+    log('Tentando reiniciar em 30 segundos...', 'info');
     setTimeout(() => {
         log('Reiniciando após falha de autenticação...', 'info');
         client.initialize();
-    }, 5000);
+    }, 30000);
 });
 
 client.on('loading_screen', (percent, message) => {
