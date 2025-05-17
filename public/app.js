@@ -202,90 +202,111 @@ async function deleteContent(type, identifier) {
     }
 }
 
-// Manipulador do formulário de texto
-document.getElementById('textForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    console.log('Formulário de texto submetido');
-    const frase = document.getElementById('fraseText').value.trim();
+// Carregar dados ao iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Página carregada, inicializando...');
     
-    if (!frase) {
-        showToast('Por favor, digite uma frase', 'error');
-        return;
-    }
-
-    try {
-        console.log('Enviando frase:', frase);
-        const response = await fetch('/frases', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ frase })
-        });
-
-        const data = await response.json();
-        console.log('Resposta do servidor:', data);
-
-        if (response.ok) {
-            showToast('Frase adicionada com sucesso');
-            document.getElementById('fraseText').value = '';
-            document.getElementById('charCount').textContent = '0';
-            await loadContent();
-        } else {
-            throw new Error(data.error || 'Erro ao adicionar frase');
-        }
-    } catch (error) {
-        console.error('Erro ao adicionar frase:', error);
-        showToast(error.message, 'error');
-    }
-});
-
-// Manipulador do formulário de mídia
-document.getElementById('mediaForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    console.log('Formulário de mídia submetido');
+    // Verificar se os elementos existem
+    const textForm = document.getElementById('textForm');
+    const mediaForm = document.getElementById('mediaForm');
     
-    const fileInput = document.getElementById('mediaFile');
-    const file = fileInput.files[0];
+    console.log('Elementos encontrados:', {
+        textForm: !!textForm,
+        mediaForm: !!mediaForm
+    });
 
-    if (!file) {
-        showToast('Por favor, selecione um arquivo', 'error');
-        return;
+    if (textForm) {
+        console.log('Registrando evento do formulário de texto');
+        textForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Formulário de texto submetido');
+            const frase = document.getElementById('fraseText').value.trim();
+            
+            if (!frase) {
+                showToast('Por favor, digite uma frase', 'error');
+                return;
+            }
+
+            try {
+                console.log('Enviando frase:', frase);
+                const response = await fetch('/frases', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ frase })
+                });
+
+                const data = await response.json();
+                console.log('Resposta do servidor:', data);
+
+                if (response.ok) {
+                    showToast('Frase adicionada com sucesso');
+                    document.getElementById('fraseText').value = '';
+                    document.getElementById('charCount').textContent = '0';
+                    await loadContent();
+                } else {
+                    throw new Error(data.error || 'Erro ao adicionar frase');
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar frase:', error);
+                showToast(error.message, 'error');
+            }
+        });
     }
 
-    try {
-        console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
-        const formData = new FormData();
-        const type = file.type.startsWith('image/') ? 'image' : 'video';
-        formData.append('type', type);
-        formData.append('file', file);
+    if (mediaForm) {
+        console.log('Registrando evento do formulário de mídia');
+        mediaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Formulário de mídia submetido');
+            
+            const fileInput = document.getElementById('mediaFile');
+            const file = fileInput.files[0];
 
-        console.log('Dados do formulário:', {
-            type: type,
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type
+            if (!file) {
+                showToast('Por favor, selecione um arquivo', 'error');
+                return;
+            }
+
+            try {
+                console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
+                const formData = new FormData();
+                const type = file.type.startsWith('image/') ? 'image' : 'video';
+                formData.append('type', type);
+                formData.append('file', file);
+
+                console.log('Dados do formulário:', {
+                    type: type,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type
+                });
+
+                const response = await fetch('/media', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log('Resposta do servidor:', data);
+
+                if (response.ok) {
+                    showToast('Mídia enviada com sucesso');
+                    fileInput.value = ''; // Limpa o input de arquivo
+                    await loadContent();
+                } else {
+                    throw new Error(data.error || 'Erro ao enviar mídia');
+                }
+            } catch (error) {
+                console.error('Erro ao enviar mídia:', error);
+                showToast(error.message, 'error');
+            }
         });
-
-        const response = await fetch('/media', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-        console.log('Resposta do servidor:', data);
-
-        if (response.ok) {
-            showToast('Mídia enviada com sucesso');
-            fileInput.value = ''; // Limpa o input de arquivo
-            await loadContent();
-        } else {
-            throw new Error(data.error || 'Erro ao enviar mídia');
-        }
-    } catch (error) {
-        console.error('Erro ao enviar mídia:', error);
-        showToast(error.message, 'error');
     }
+
+    // Carregar conteúdo inicial
+    loadContent();
 });
 
 // Configurar área de drag and drop
@@ -316,9 +337,4 @@ uploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
     mediaFile.files = e.dataTransfer.files;
-});
-
-// Carregar dados ao iniciar
-document.addEventListener('DOMContentLoaded', () => {
-    loadContent();
 }); 
