@@ -191,18 +191,11 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-dev-shm-usage',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-features=IsolateOrigins',
-            '--disable-site-isolation-trials',
-            '--disable-web-security',
-            '--disable-features=BlockInsecurePrivateNetworkRequests'
+            '--disable-dev-shm-usage'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 0,
-        defaultViewport: null,
-        ignoreHTTPSErrors: true,
-        protocolTimeout: 0
+        defaultViewport: null
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
@@ -213,7 +206,22 @@ const client = new Client({
     }
 });
 
-log('Configuração do WhatsApp concluída', 'success');
+// Função para inicializar com retry
+async function initializeWithRetry(retries = 3, delay = 5000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            log(`Tentativa ${i + 1} de ${retries} de inicialização...`, 'info');
+            await new Promise(resolve => setTimeout(resolve, delay));
+            await client.initialize();
+            log('Cliente inicializado com sucesso!', 'success');
+            return;
+        } catch (error) {
+            log(`Erro na tentativa ${i + 1}: ${error.message}`, 'error');
+            if (i === retries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay * 2));
+        }
+    }
+}
 
 // Adicionar mais logs para debug
 client.on('disconnected', (reason) => {
@@ -221,12 +229,11 @@ client.on('disconnected', (reason) => {
     log('Tentando reconectar em 60 segundos...', 'info');
     setTimeout(() => {
         log('Iniciando reconexão...', 'info');
-        client.initialize().catch(err => {
+        initializeWithRetry().catch(err => {
             log(`Erro na reconexão: ${err.message}`, 'error');
-            // Tentar novamente após 60 segundos em caso de erro
             setTimeout(() => {
                 log('Tentando reconexão novamente após erro...', 'info');
-                client.initialize();
+                initializeWithRetry();
             }, 60000);
         });
     }, 60000);
@@ -238,7 +245,7 @@ client.on('auth_failure', (error) => {
     log('Tentando reiniciar em 60 segundos...', 'info');
     setTimeout(() => {
         log('Reiniciando após falha de autenticação...', 'info');
-        client.initialize();
+        initializeWithRetry();
     }, 60000);
 });
 
@@ -250,7 +257,7 @@ process.on('uncaughtException', (error) => {
         log('Erro de protocolo detectado, reiniciando em 60 segundos...', 'warning');
         setTimeout(() => {
             log('Reiniciando após erro de protocolo...', 'info');
-            client.initialize();
+            initializeWithRetry();
         }, 60000);
     }
 });
@@ -262,7 +269,7 @@ process.on('unhandledRejection', (reason, promise) => {
         log('Erro de protocolo detectado em promessa, reiniciando em 60 segundos...', 'warning');
         setTimeout(() => {
             log('Reiniciando após erro de protocolo em promessa...', 'info');
-            client.initialize();
+            initializeWithRetry();
         }, 60000);
     }
 });
@@ -662,5 +669,7 @@ app.listen(PORT, async () => {
     await inicializarFrases(); // Inicializa o arquivo de frases ao iniciar o servidor
     log('Iniciando cliente WhatsApp...', 'info');
     // Iniciar o cliente WhatsApp
-    client.initialize();
+    initializeWithRetry().catch(error => {
+        log(`Falha ao inicializar após todas as tentativas: ${error.message}`, 'error');
+    });
 }); 
