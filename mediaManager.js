@@ -52,23 +52,51 @@ async function checkFolderSize(dir) {
 
 // Salvar arquivo de mídia
 async function saveMedia(file, type) {
+    console.log('Iniciando salvamento de mídia:', {
+        fileName: file.originalname,
+        type: type,
+        path: file.path
+    });
+
     await initializeDirectories();
     
     const dir = MEDIA_DIRS[type];
     const fileName = `${Date.now()}_${file.originalname}`;
     const filePath = path.join(dir, fileName);
     
-    await checkFileSize(file.path);
-    await checkFolderSize(dir);
+    console.log('Caminhos configurados:', {
+        dir: dir,
+        fileName: fileName,
+        filePath: filePath
+    });
     
-    await fs.copyFile(file.path, filePath);
-    await fs.unlink(file.path); // Remove o arquivo temporário
-    
-    return {
-        path: filePath,
-        type,
-        fileName
-    };
+    try {
+        await checkFileSize(file.path);
+        await checkFolderSize(dir);
+        
+        console.log('Copiando arquivo para:', filePath);
+        await fs.copyFile(file.path, filePath);
+        console.log('Arquivo copiado com sucesso');
+        
+        console.log('Removendo arquivo temporário:', file.path);
+        await fs.unlink(file.path);
+        console.log('Arquivo temporário removido');
+        
+        return {
+            path: filePath,
+            type,
+            fileName
+        };
+    } catch (error) {
+        console.error('Erro ao salvar mídia:', error);
+        // Tentar remover o arquivo temporário em caso de erro
+        try {
+            await fs.unlink(file.path);
+        } catch (cleanupError) {
+            console.error('Erro ao remover arquivo temporário:', cleanupError);
+        }
+        throw error;
+    }
 }
 
 // Listar todas as mídias

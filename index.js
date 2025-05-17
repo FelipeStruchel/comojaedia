@@ -118,10 +118,12 @@ app.post('/frases', async (req, res) => {
         console.log('Recebendo nova frase:', req.body);
         const { frase } = req.body;
         if (!frase) {
+            console.log('Frase não fornecida');
             return res.status(400).json({ error: 'Frase é obrigatória' });
         }
 
         if (frase.length > MAX_MESSAGE_LENGTH) {
+            console.log('Frase excede o tamanho máximo');
             return res.status(400).json({ 
                 error: `A frase deve ter no máximo ${MAX_MESSAGE_LENGTH} caracteres`,
                 maxLength: MAX_MESSAGE_LENGTH
@@ -131,9 +133,9 @@ app.post('/frases', async (req, res) => {
         const data = await lerFrases();
         data.frases.push(frase);
         await salvarFrases(data);
-        console.log('Frase adicionada com sucesso');
+        console.log('Frase adicionada com sucesso:', frase);
 
-        res.status(201).json({ message: 'Frase adicionada com sucesso' });
+        res.status(201).json({ message: 'Frase adicionada com sucesso', frase });
     } catch (error) {
         console.error('Erro ao adicionar frase:', error);
         res.status(500).json({ error: 'Erro ao adicionar frase' });
@@ -548,18 +550,29 @@ const upload = multer({
 // Rota para upload de mídia
 app.post('/media', upload.single('file'), async (req, res) => {
     try {
+        console.log('Recebendo upload de mídia:', {
+            file: req.file,
+            body: req.body
+        });
+
         if (!req.file) {
+            console.log('Nenhum arquivo enviado');
             return res.status(400).json({ error: 'Nenhum arquivo enviado' });
         }
 
         const type = req.body.type || MEDIA_TYPES.TEXT;
         if (!Object.values(MEDIA_TYPES).includes(type)) {
+            console.log('Tipo de mídia inválido:', type);
             return res.status(400).json({ error: 'Tipo de mídia inválido' });
         }
 
+        console.log('Salvando mídia do tipo:', type);
         const media = await saveMedia(req.file, type);
+        console.log('Mídia salva com sucesso:', media);
+
         res.status(201).json({ message: 'Mídia salva com sucesso', media });
     } catch (error) {
+        console.error('Erro ao salvar mídia:', error);
         res.status(500).json({ error: error.message });
     }
 });

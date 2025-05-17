@@ -207,30 +207,36 @@ document.getElementById('textForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Formulário de texto submetido');
     const frase = document.getElementById('fraseText').value.trim();
-    if (frase) {
-        try {
-            console.log('Enviando frase:', frase);
-            const response = await fetch('/frases', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ frase })
-            });
+    
+    if (!frase) {
+        showToast('Por favor, digite uma frase', 'error');
+        return;
+    }
 
-            if (response.ok) {
-                showToast('Frase adicionada com sucesso');
-                document.getElementById('fraseText').value = '';
-                document.getElementById('charCount').textContent = '0';
-                loadContent();
-            } else {
-                const error = await response.json();
-                throw new Error(error.error);
-            }
-        } catch (error) {
-            console.error('Erro ao adicionar frase:', error);
-            showToast(error.message, 'error');
+    try {
+        console.log('Enviando frase:', frase);
+        const response = await fetch('/frases', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ frase })
+        });
+
+        const data = await response.json();
+        console.log('Resposta do servidor:', data);
+
+        if (response.ok) {
+            showToast('Frase adicionada com sucesso');
+            document.getElementById('fraseText').value = '';
+            document.getElementById('charCount').textContent = '0';
+            await loadContent();
+        } else {
+            throw new Error(data.error || 'Erro ao adicionar frase');
         }
+    } catch (error) {
+        console.error('Erro ao adicionar frase:', error);
+        showToast(error.message, 'error');
     }
 });
 
@@ -248,23 +254,33 @@ document.getElementById('mediaForm').addEventListener('submit', async (e) => {
     }
 
     try {
-        console.log('Enviando arquivo:', file.name);
+        console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
         const formData = new FormData();
-        formData.append('type', file.type.startsWith('image/') ? 'image' : 'video');
+        const type = file.type.startsWith('image/') ? 'image' : 'video';
+        formData.append('type', type);
         formData.append('file', file);
+
+        console.log('Dados do formulário:', {
+            type: type,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type
+        });
 
         const response = await fetch('/media', {
             method: 'POST',
             body: formData
         });
 
+        const data = await response.json();
+        console.log('Resposta do servidor:', data);
+
         if (response.ok) {
             showToast('Mídia enviada com sucesso');
-            mediaForm.reset();
-            loadContent();
+            fileInput.value = ''; // Limpa o input de arquivo
+            await loadContent();
         } else {
-            const error = await response.json();
-            throw new Error(error.error);
+            throw new Error(data.error || 'Erro ao enviar mídia');
         }
     } catch (error) {
         console.error('Erro ao enviar mídia:', error);
