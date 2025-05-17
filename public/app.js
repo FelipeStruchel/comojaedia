@@ -93,7 +93,7 @@ async function loadContent() {
             })),
             ...media.map(item => ({
                 type: item.type,
-                content: item.path,
+                content: item.url,
                 fileName: item.fileName
             }))
         ].sort((a, b) => b.index - a.index);
@@ -101,8 +101,8 @@ async function loadContent() {
         contentItems.innerHTML = content.map(item => {
             if (item.type === 'text') {
                 return `
-                    <div class="bg-gray-50 p-4 rounded-lg flex justify-between items-start group">
-                        <p class="text-gray-800 flex-1 mr-4">${item.content}</p>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-gray-800 mb-2">${item.content}</p>
                         <button 
                             onclick="deleteContent('text', ${item.index})"
                             class="text-red-500 hover:text-red-700 transition-colors"

@@ -558,6 +558,13 @@ app.post('/media', upload.single('file'), async (req, res) => {
     }
 });
 
+// Rota para servir arquivos de mídia
+app.get('/media/:type/:filename', (req, res) => {
+    const { type, filename } = req.params;
+    const filePath = path.join(__dirname, 'media', type, filename);
+    res.sendFile(filePath);
+});
+
 // Rota para listar mídia
 app.get('/media', async (req, res) => {
     try {
@@ -567,7 +574,12 @@ app.get('/media', async (req, res) => {
         }
 
         const media = await listAllMedia();
-        res.json(media);
+        // Modificar os caminhos para URLs relativas
+        const mediaWithUrls = media.map(item => ({
+            ...item,
+            url: `/media/${item.type}/${path.basename(item.path)}`
+        }));
+        res.json(mediaWithUrls);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
