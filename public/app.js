@@ -314,40 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadContent();
 });
 
-// Configurar área de drag and drop
-const uploadArea = document.createElement('div');
-uploadArea.className = 'upload-area';
-uploadArea.innerHTML = `
-    <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-    </svg>
-    <p class="mt-2 text-sm text-gray-600">Arraste um arquivo ou clique para selecionar</p>
-`;
-
-mediaFile.parentNode.insertBefore(uploadArea, mediaFile);
-mediaFile.style.display = 'none';
-
-uploadArea.addEventListener('click', () => mediaFile.click());
-uploadArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-});
-
-uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('dragover');
-});
-
-uploadArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    mediaFile.files = e.dataTransfer.files;
-});
-
-// Configurações de validação
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
-const ALLOWED_VIDEO_TYPES = ['video/mp4'];
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-
 // Elementos do formulário de mídia
 const mediaFile = document.getElementById('mediaFile');
 const fileError = document.getElementById('fileError');
@@ -359,7 +325,40 @@ const removeFile = document.getElementById('removeFile');
 const submitButton = document.querySelector('#mediaForm button[type="submit"]');
 
 // Configurar área de drag and drop
-const dropZone = document.querySelector('#mediaForm .border-dashed');
+const uploadArea = document.createElement('div');
+uploadArea.className = 'upload-area';
+uploadArea.innerHTML = `
+    <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+    </svg>
+    <p class="mt-2 text-sm text-gray-600">Arraste um arquivo ou clique para selecionar</p>
+`;
+
+if (mediaFile && mediaFile.parentNode) {
+    mediaFile.parentNode.insertBefore(uploadArea, mediaFile);
+    mediaFile.style.display = 'none';
+
+    uploadArea.addEventListener('click', () => mediaFile.click());
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        mediaFile.files = e.dataTransfer.files;
+    });
+}
+
+// Configurações de validação
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4'];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 // Função para validar arquivo
 function validateFile(file) {
