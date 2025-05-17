@@ -192,17 +192,17 @@ const client = new Client({
             '--no-zygote',
             '--single-process',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-setuid-sandbox',
-            '--no-sandbox',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins',
-            '--disable-site-isolation-trials'
+            '--disable-accelerated-2d-canvas'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 120000,
         defaultViewport: null,
-        ignoreHTTPSErrors: true
+        ignoreHTTPSErrors: true,
+        browserWSEndpoint: null,
+        browserRevision: null,
+        handleSIGINT: true,
+        handleSIGTERM: true,
+        handleSIGHUP: true
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
@@ -218,28 +218,28 @@ log('Configuração do WhatsApp concluída', 'success');
 // Adicionar mais logs para debug
 client.on('disconnected', (reason) => {
     log(`Cliente desconectado: ${reason}`, 'warning');
-    log('Tentando reconectar em 5 segundos...', 'info');
+    log('Tentando reconectar em 30 segundos...', 'info');
     setTimeout(() => {
         log('Iniciando reconexão...', 'info');
         client.initialize().catch(err => {
             log(`Erro na reconexão: ${err.message}`, 'error');
-            // Tentar novamente após 30 segundos em caso de erro
+            // Tentar novamente após 60 segundos em caso de erro
             setTimeout(() => {
                 log('Tentando reconexão novamente após erro...', 'info');
                 client.initialize();
-            }, 30000);
+            }, 60000);
         });
-    }, 5000);
+    }, 30000);
 });
 
 client.on('auth_failure', (error) => {
     log(`Falha na autenticação: ${error}`, 'error');
     log(`Detalhes do erro: ${JSON.stringify(error, null, 2)}`, 'error');
-    log('Tentando reiniciar em 30 segundos...', 'info');
+    log('Tentando reiniciar em 60 segundos...', 'info');
     setTimeout(() => {
         log('Reiniciando após falha de autenticação...', 'info');
         client.initialize();
-    }, 30000);
+    }, 60000);
 });
 
 client.on('loading_screen', (percent, message) => {
