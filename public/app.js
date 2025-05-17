@@ -125,6 +125,7 @@ async function loadContent() {
                 `;
             } else {
                 const isImage = item.type === 'image';
+                const type = isImage ? 'image' : 'video';
                 return `
                     <div class="bg-gray-50 p-4 rounded-lg">
                         ${isImage ? 
@@ -132,7 +133,7 @@ async function loadContent() {
                             `<video src="${item.content}" controls class="max-w-full h-auto rounded-lg mb-2"></video>`
                         }
                         <button 
-                            onclick="deleteContent('media', '${item.content}')"
+                            onclick="deleteContent('${type}', '${item.fileName}')"
                             class="text-red-500 hover:text-red-700 transition-colors"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,11 +176,14 @@ async function addFrase(frase) {
 }
 
 // Deletar conteúdo
-async function deleteContent(identifier, type) {
+async function deleteContent(type, identifier) {
     try {
-        // Extrair apenas o nome do arquivo do caminho completo
-        const filename = identifier.split('/').pop();
-        const endpoint = `/media/${type}/${filename}`;
+        let endpoint;
+        if (type === 'text') {
+            endpoint = `/frases/${identifier}`;
+        } else {
+            endpoint = `/media/${type}/${identifier}`;
+        }
         console.log('Deletando conteúdo:', endpoint);
         
         const response = await fetch(endpoint, {
