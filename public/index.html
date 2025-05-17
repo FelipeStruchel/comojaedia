@@ -3,468 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Conteúdo - Como Já É Dia</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #1a1a1a;
-            --card-dark: #2d2d2d;
-            --text-dark: #e0e0e0;
-            --border-dark: #404040;
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-dark);
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 600px;
-            padding: 1rem;
-        }
-
-        .card {
-            background-color: var(--card-dark);
-            border: 1px solid var(--border-dark);
-            margin-bottom: 1rem;
-        }
-
-        .card-title {
-            color: var(--text-dark);
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-control {
-            background-color: var(--bg-dark);
-            border: 1px solid var(--border-dark);
-            color: var(--text-dark);
-        }
-
-        .form-control::placeholder {
-            color: #888;
-            opacity: 1;
-        }
-
-        .form-control:focus {
-            background-color: var(--bg-dark);
-            border-color: #0d6efd;
-            color: var(--text-dark);
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-        .frase-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            background-color: var(--bg-dark);
-            border: 1px solid var(--border-dark);
-            border-radius: 0.5rem;
-            font-size: 0.9rem;
-            color: #e0e0e0;
-        }
-
-        .frase-texto {
-            flex: 1;
-            margin-right: 1rem;
-            word-break: break-word;
-            color: #e0e0e0;
-        }
-
-        .caracteres-restantes {
-            font-size: 0.8rem;
-            color: #6c757d;
-            margin-top: 0.25rem;
-        }
-
-        .caracteres-restantes.warning {
-            color: #dc3545;
-        }
-
-        .btn-primary {
-            background-color: #0d6efd;
-            border: none;
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            border: none;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        @media (max-width: 576px) {
-            .container {
-                padding: 0.5rem;
-            }
-
-            .frase-item {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .frase-texto {
-                margin-right: 0;
-                margin-bottom: 0.5rem;
-            }
-
-            .btn-danger {
-                align-self: flex-end;
-            }
-        }
-
-        .media-preview {
-            max-width: 200px;
-            max-height: 200px;
-            object-fit: contain;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: bold;
-        }
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .upload-area:hover {
-            border-color: #0d6efd;
-            background-color: #f8f9fa;
-        }
-        .upload-area.dragover {
-            border-color: #0d6efd;
-            background-color: #e9ecef;
-        }
-        .media-item {
-            position: relative;
-            margin-bottom: 15px;
-        }
-        .media-item .delete-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .media-item:hover .delete-btn {
-            opacity: 1;
-        }
-    </style>
+    <title>Como Já É Dia</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="container py-4">
-        <h1 class="text-center mb-4">Gerenciador de Conteúdo</h1>
-        
-        <ul class="nav nav-tabs mb-4" id="contentTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="texts-tab" data-bs-toggle="tab" data-bs-target="#texts" type="button" role="tab">
-                    <i class="fas fa-font"></i> Mensagens
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="images-tab" data-bs-toggle="tab" data-bs-target="#images" type="button" role="tab">
-                    <i class="fas fa-image"></i> Imagens
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="videos-tab" data-bs-toggle="tab" data-bs-target="#videos" type="button" role="tab">
-                    <i class="fas fa-video"></i> Vídeos
-                </button>
-            </li>
-        </ul>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Como Já É Dia</h1>
+            <p class="text-gray-600">Contagem regressiva para a chacrinha</p>
+        </header>
 
-        <div class="tab-content" id="contentTabsContent">
-            <!-- Mensagens -->
-            <div class="tab-pane fade show active" id="texts" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Adicionar Mensagem</h5>
-                                <form id="textForm">
-                                    <div class="mb-3">
-                                        <textarea class="form-control" id="textContent" rows="3" maxlength="4096" required></textarea>
-                                        <div class="form-text">Máximo de 4096 caracteres</div>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Adicionar</button>
-                                </form>
-                            </div>
-                        </div>
+        <!-- Main Content -->
+        <main class="max-w-4xl mx-auto">
+            <!-- Countdown Section -->
+            <section class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Contagem Regressiva</h2>
+                <div id="countdown" class="text-3xl font-bold text-indigo-600 text-center">
+                    Carregando...
+                </div>
+            </section>
+
+            <!-- Media Management Section -->
+            <section class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Gerenciar Mídia</h2>
+                
+                <!-- Upload Form -->
+                <form id="uploadForm" class="mb-8">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="mediaType">
+                            Tipo de Mídia
+                        </label>
+                        <select id="mediaType" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="text">Texto</option>
+                            <option value="image">Imagem</option>
+                            <option value="video">Vídeo</option>
+                        </select>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Mensagens Cadastradas</h5>
-                                <div id="textList" class="list-group"></div>
-                            </div>
-                        </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="mediaFile">
+                            Arquivo
+                        </label>
+                        <input type="file" id="mediaFile" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-200">
+                        Enviar Mídia
+                    </button>
+                </form>
+
+                <!-- Media List -->
+                <div id="mediaList" class="space-y-4">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Mídias Disponíveis</h3>
+                    <div id="mediaItems" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Media items will be inserted here -->
                     </div>
                 </div>
-            </div>
-
-            <!-- Imagens -->
-            <div class="tab-pane fade" id="images" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Upload de Imagem</h5>
-                                <div class="upload-area" id="imageUpload">
-                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
-                                    <p>Arraste uma imagem ou clique para selecionar</p>
-                                    <input type="file" id="imageInput" accept="image/*" class="d-none">
-                                    <div class="form-text">Máximo de 20MB</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Imagens Cadastradas</h5>
-                                <div id="imageList" class="row"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vídeos -->
-            <div class="tab-pane fade" id="videos" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Upload de Vídeo</h5>
-                                <div class="upload-area" id="videoUpload">
-                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
-                                    <p>Arraste um vídeo ou clique para selecionar</p>
-                                    <input type="file" id="videoInput" accept="video/*" class="d-none">
-                                    <div class="form-text">Máximo de 20MB e 1.5 minutos</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Vídeos Cadastrados</h5>
-                                <div id="videoList" class="row"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Funções de utilidade
-        function showAlert(message, type = 'success') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => alertDiv.remove(), 5000);
-        }
-
-        // Gerenciamento de Mensagens
-        const textForm = document.getElementById('textForm');
-        const textList = document.getElementById('textList');
-
-        async function loadTexts() {
-            try {
-                const response = await fetch('/frases');
-                const texts = await response.json();
-                textList.innerHTML = texts.map((text, index) => `
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div class="text-truncate">${text}</div>
-                        <button class="btn btn-danger btn-sm" onclick="deleteText(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-            } catch (error) {
-                showAlert('Erro ao carregar mensagens', 'danger');
-            }
-        }
-
-        async function addText(text) {
-            try {
-                const response = await fetch('/frases', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ frase: text })
-                });
-                if (response.ok) {
-                    showAlert('Mensagem adicionada com sucesso');
-                    textForm.reset();
-                    loadTexts();
-                } else {
-                    const error = await response.json();
-                    throw new Error(error.error);
-                }
-            } catch (error) {
-                showAlert(error.message, 'danger');
-            }
-        }
-
-        async function deleteText(index) {
-            try {
-                const response = await fetch(`/frases/${index}`, { method: 'DELETE' });
-                if (response.ok) {
-                    showAlert('Mensagem removida com sucesso');
-                    loadTexts();
-                } else {
-                    throw new Error('Erro ao remover mensagem');
-                }
-            } catch (error) {
-                showAlert(error.message, 'danger');
-            }
-        }
-
-        textForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const text = document.getElementById('textContent').value.trim();
-            if (text) addText(text);
-        });
-
-        // Gerenciamento de Mídia
-        function setupMediaUpload(uploadArea, input, type) {
-            uploadArea.addEventListener('click', () => input.click());
-            
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.classList.add('dragover');
-            });
-            
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.classList.remove('dragover');
-            });
-            
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if (file) handleMediaUpload(file, type);
-            });
-            
-            input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) handleMediaUpload(file, type);
-            });
-        }
-
-        async function handleMediaUpload(file, type) {
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('type', type);
-
-                const response = await fetch('/media', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    showAlert(`${type === 'image' ? 'Imagem' : 'Vídeo'} enviado com sucesso`);
-                    loadMedia(type);
-                } else {
-                    const error = await response.json();
-                    throw new Error(error.error);
-                }
-            } catch (error) {
-                showAlert(error.message, 'danger');
-            }
-        }
-
-        async function loadMedia(type) {
-            try {
-                const response = await fetch(`/media?type=${type}`);
-                const media = await response.json();
-                const container = document.getElementById(`${type}List`);
-                
-                if (media && media.length > 0) {
-                    container.innerHTML = media.map(item => `
-                        <div class="col-md-6 media-item">
-                            <div class="card">
-                                <img src="${type === 'image' ? item.path : 'video-placeholder.jpg'}" 
-                                     class="card-img-top media-preview" alt="${item.fileName}">
-                                <div class="card-body">
-                                    <p class="card-text text-truncate">${item.fileName}</p>
-                                    <button class="btn btn-danger btn-sm delete-btn" onclick="deleteMedia('${item.path}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<p class="text-muted">Nenhum item cadastrado</p>';
-                }
-            } catch (error) {
-                showAlert('Erro ao carregar mídia', 'danger');
-            }
-        }
-
-        async function deleteMedia(path) {
-            try {
-                const response = await fetch(`/media/${encodeURIComponent(path)}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    showAlert('Mídia removida com sucesso');
-                    loadMedia(path.includes('images') ? 'image' : 'video');
-                } else {
-                    throw new Error('Erro ao remover mídia');
-                }
-            } catch (error) {
-                showAlert(error.message, 'danger');
-            }
-        }
-
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTexts();
-            setupMediaUpload(
-                document.getElementById('imageUpload'),
-                document.getElementById('imageInput'),
-                'image'
-            );
-            setupMediaUpload(
-                document.getElementById('videoUpload'),
-                document.getElementById('videoInput'),
-                'video'
-            );
-        });
-
-        // Carregar mídia quando mudar de aba
-        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
-            tab.addEventListener('shown.bs.tab', (e) => {
-                const type = e.target.id.split('-')[0];
-                if (type !== 'texts') {
-                    loadMedia(type.slice(0, -1));
-                }
-            });
-        });
-    </script>
+    <script src="app.js"></script>
 </body>
 </html> 
