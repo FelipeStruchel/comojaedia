@@ -359,6 +359,9 @@ const fileName = document.getElementById('fileName');
 const removeFile = document.getElementById('removeFile');
 const submitButton = document.querySelector('#mediaForm button[type="submit"]');
 
+// Configurar área de drag and drop
+const dropZone = document.querySelector('#mediaForm .border-dashed');
+
 // Função para validar arquivo
 function validateFile(file) {
     // Verificar extensão
@@ -451,9 +454,7 @@ mediaFile.addEventListener('change', (e) => {
 // Evento de remover arquivo
 removeFile.addEventListener('click', clearPreview);
 
-// Evento de drag and drop
-const dropZone = document.querySelector('#mediaForm .border-dashed');
-
+// Eventos de drag and drop
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => {
         e.preventDefault();
