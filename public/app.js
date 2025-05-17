@@ -323,6 +323,7 @@ const videoPreview = document.getElementById('videoPreview');
 const fileName = document.getElementById('fileName');
 const removeFile = document.getElementById('removeFile');
 const submitButton = document.querySelector('#mediaForm button[type="submit"]');
+const dropZone = document.querySelector('#mediaForm .border-dashed');
 
 // Configurar área de drag and drop
 const uploadArea = document.createElement('div');
