@@ -177,7 +177,7 @@ const client = new Client({
         dataPath: path.join(__dirname, '.wwebjs_auth')
     }),
     puppeteer: {
-        headless: true,
+        headless: 'new',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -191,11 +191,33 @@ const client = new Client({
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-setuid-sandbox',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--disable-dev-shm-usage',
+            '--disable-extensions',
+            '--disable-default-apps',
+            '--disable-translate',
+            '--disable-sync',
+            '--disable-background-networking',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--safebrowsing-disable-auto-update',
+            '--js-flags="--max-old-space-size=512"'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 0,
-        defaultViewport: null
+        defaultViewport: null,
+        pipe: true,
+        dumpio: true
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
@@ -211,8 +233,24 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
     for (let i = 0; i < retries; i++) {
         try {
             log(`Tentativa ${i + 1} de ${retries} de inicialização...`, 'info');
+            
+            // Limpar processos do Chrome antes de cada tentativa
+            try {
+                await execPromise('pkill -f chrome');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (e) {
+                log('Nenhum processo Chrome para matar', 'info');
+            }
+            
             await new Promise(resolve => setTimeout(resolve, delay));
-            await client.initialize();
+            
+            // Inicializar com timeout
+            const initPromise = client.initialize();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout na inicialização')), 30000)
+            );
+            
+            await Promise.race([initPromise, timeoutPromise]);
             log('Cliente inicializado com sucesso!', 'success');
             return;
         } catch (error) {
