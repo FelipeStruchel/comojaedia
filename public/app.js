@@ -342,4 +342,202 @@ uploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
     mediaFile.files = e.dataTransfer.files;
+});
+
+// Configurações de validação
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4'];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+// Elementos do formulário de mídia
+const mediaFile = document.getElementById('mediaFile');
+const fileError = document.getElementById('fileError');
+const filePreview = document.getElementById('filePreview');
+const imagePreview = document.getElementById('imagePreview');
+const videoPreview = document.getElementById('videoPreview');
+const fileName = document.getElementById('fileName');
+const removeFile = document.getElementById('removeFile');
+const submitButton = document.querySelector('#mediaForm button[type="submit"]');
+
+// Função para validar arquivo
+function validateFile(file) {
+    // Verificar extensão
+    const extension = file.name.split('.').pop().toLowerCase();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4'];
+    
+    if (!allowedExtensions.includes(extension)) {
+        return {
+            valid: false,
+            error: 'Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF ou MP4.'
+        };
+    }
+
+    // Verificar tipo MIME
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+    
+    if (!isImage && !isVideo) {
+        return {
+            valid: false,
+            error: 'Tipo de arquivo não permitido. Use apenas imagens ou vídeos MP4.'
+        };
+    }
+
+    // Verificar tamanho
+    if (file.size > MAX_FILE_SIZE) {
+        return {
+            valid: false,
+            error: 'Arquivo muito grande. Tamanho máximo: 20MB'
+        };
+    }
+
+    return { valid: true };
+}
+
+// Função para mostrar preview
+function showPreview(file) {
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+
+    if (isImage) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.classList.remove('hidden');
+        videoPreview.classList.add('hidden');
+    } else if (isVideo) {
+        videoPreview.src = URL.createObjectURL(file);
+        videoPreview.classList.remove('hidden');
+        imagePreview.classList.add('hidden');
+    }
+
+    fileName.textContent = file.name;
+    filePreview.classList.remove('hidden');
+    submitButton.disabled = false;
+}
+
+// Função para limpar preview
+function clearPreview() {
+    imagePreview.src = '';
+    videoPreview.src = '';
+    imagePreview.classList.add('hidden');
+    videoPreview.classList.add('hidden');
+    filePreview.classList.add('hidden');
+    fileName.textContent = '';
+    fileError.classList.add('hidden');
+    fileError.textContent = '';
+    submitButton.disabled = true;
+    mediaFile.value = '';
+}
+
+// Evento de mudança do input de arquivo
+mediaFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+        clearPreview();
+        return;
+    }
+
+    const validation = validateFile(file);
+    if (!validation.valid) {
+        fileError.textContent = validation.error;
+        fileError.classList.remove('hidden');
+        clearPreview();
+        return;
+    }
+
+    fileError.classList.add('hidden');
+    showPreview(file);
+});
+
+// Evento de remover arquivo
+removeFile.addEventListener('click', clearPreview);
+
+// Evento de drag and drop
+const dropZone = document.querySelector('#mediaForm .border-dashed');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+});
+
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+    });
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+    });
+});
+
+dropZone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    const validation = validateFile(file);
+    if (!validation.valid) {
+        fileError.textContent = validation.error;
+        fileError.classList.remove('hidden');
+        clearPreview();
+        return;
+    }
+
+    mediaFile.files = e.dataTransfer.files;
+    fileError.classList.add('hidden');
+    showPreview(file);
+});
+
+// Manipulador do formulário de mídia
+document.getElementById('mediaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    console.log('Formulário de mídia submetido');
+    
+    const file = mediaFile.files[0];
+    if (!file) {
+        showToast('Por favor, selecione um arquivo', 'error');
+        return;
+    }
+
+    const validation = validateFile(file);
+    if (!validation.valid) {
+        showToast(validation.error, 'error');
+        return;
+    }
+
+    try {
+        console.log('Enviando arquivo:', file.name, 'Tipo:', file.type);
+        const formData = new FormData();
+        const type = ALLOWED_IMAGE_TYPES.includes(file.type) ? 'image' : 'video';
+        formData.append('type', type);
+        formData.append('file', file);
+
+        console.log('Dados do formulário:', {
+            type: type,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type
+        });
+
+        const response = await fetch('/media', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        console.log('Resposta do servidor:', data);
+
+        if (response.ok) {
+            showToast('Mídia enviada com sucesso');
+            clearPreview();
+            await loadContent();
+        } else {
+            throw new Error(data.error || 'Erro ao enviar mídia');
+        }
+    } catch (error) {
+        console.error('Erro ao enviar mídia:', error);
+        showToast(error.message, 'error');
+    }
 }); 

@@ -65,34 +65,44 @@
                 </form>
 
                 <!-- Media Form -->
-                <form id="mediaForm" class="space-y-4 hidden">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <label for="mediaFile" class="block text-sm font-medium text-gray-700 mb-2">Arquivo de Mídia</label>
-                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
-                            <div class="space-y-1 text-center">
+                <div id="mediaForm" class="hidden">
+                    <form class="space-y-4">
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-500 transition-colors duration-200">
+                            <input type="file" id="mediaFile" accept=".jpg,.jpeg,.png,.gif,.mp4" class="hidden">
+                            <label for="mediaFile" class="cursor-pointer">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
-                                <div class="flex text-sm text-gray-600">
-                                    <label for="mediaFile" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                        <span>Selecione um arquivo</span>
-                                        <input id="mediaFile" type="file" class="sr-only" accept="image/*,video/*">
-                                    </label>
-                                    <p class="pl-1">ou arraste e solte</p>
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    PNG, JPG, GIF até 20MB
+                                <p class="mt-1 text-sm text-gray-600">
+                                    Arraste e solte um arquivo aqui, ou clique para selecionar
                                 </p>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    JPG, PNG, GIF ou MP4 até 20MB
+                                </p>
+                            </label>
+                        </div>
+                        <p id="fileError" class="text-xs text-red-500 hidden"></p>
+                        
+                        <div id="filePreview" class="hidden space-y-2">
+                            <div class="relative">
+                                <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg" alt="Preview">
+                                <video id="videoPreview" class="hidden max-h-48 mx-auto rounded-lg" controls></video>
+                            </div>
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                                <span id="fileName" class="text-sm text-gray-600 truncate"></span>
+                                <button type="button" id="removeFile" class="text-red-500 hover:text-red-700">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                    </div>
-                    <button
-                        type="submit"
-                        class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Enviar Mídia
-                    </button>
-                </form>
+
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Enviar Mídia
+                        </button>
+                    </form>
+                </div>
 
                 <!-- Content List -->
                 <div id="contentItems" class="space-y-4">
