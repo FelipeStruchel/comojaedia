@@ -3,7 +3,7 @@ const path = require('path');
 const { MessageMedia } = require('whatsapp-web.js');
 
 // Configurações
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_FOLDER_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
 const MAX_VIDEO_DURATION = 90; // 90 segundos (1.5 minutos)
 const MEDIA_TYPES = {

@@ -543,7 +543,7 @@ async function retryOperation(operation, maxRetries = 3, delay = 5000) {
 const upload = multer({
     dest: path.join(__dirname, 'temp'),
     limits: {
-        fileSize: 20 * 1024 * 1024 // 20MB
+        fileSize: 50 * 1024 * 1024 // 50MB
     }
 });
 

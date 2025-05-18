@@ -362,7 +362,7 @@ const dropZone = document.querySelector('#mediaForm .border-dashed');
 // Configurações de validação
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4'];
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // Função para validar arquivo
 function validateFile(file) {
@@ -392,7 +392,7 @@ function validateFile(file) {
     if (file.size > MAX_FILE_SIZE) {
         return {
             valid: false,
-            error: 'Arquivo muito grande. Tamanho máximo: 20MB'
+            error: 'Arquivo muito grande. Tamanho máximo: 50MB'
         };
     }
 
