@@ -389,7 +389,16 @@ const dropZone = document.querySelector('#mediaForm .border-dashed');
 // Configurações de validação
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+// Função para formatar tamanho do arquivo
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
 // Função para validar arquivo
 function validateFile(file) {
@@ -400,7 +409,7 @@ function validateFile(file) {
     if (!allowedExtensions.includes(extension)) {
         return {
             valid: false,
-            error: 'Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF ou vídeos (MP4, MOV, AVI, MKV).'
+            error: `Tipo de arquivo não permitido (${extension}). Use apenas JPG, PNG, GIF ou vídeos (MP4, MOV, AVI, MKV).`
         };
     }
 
@@ -411,7 +420,7 @@ function validateFile(file) {
     if (!isImage && !isVideo) {
         return {
             valid: false,
-            error: 'Tipo de arquivo não permitido. Use apenas imagens ou vídeos.'
+            error: `Tipo de arquivo não permitido (${file.type}). Use apenas imagens ou vídeos.`
         };
     }
 
@@ -419,7 +428,7 @@ function validateFile(file) {
     if (file.size > MAX_FILE_SIZE) {
         return {
             valid: false,
-            error: 'Arquivo muito grande. Tamanho máximo: 50MB'
+            error: `Arquivo muito grande. Tamanho atual: ${formatFileSize(file.size)}. Tamanho máximo permitido: ${formatFileSize(MAX_FILE_SIZE)}`
         };
     }
 
