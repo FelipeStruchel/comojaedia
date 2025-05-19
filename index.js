@@ -51,39 +51,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Caminho para o arquivo de frases
-const frasesPath = path.join(__dirname, 'frases.json');
-
-// Função para inicializar o arquivo de frases
-async function inicializarFrases() {
-    try {
-        if (!fs.existsSync(frasesPath)) {
-            console.log('Arquivo de frases não encontrado. Criando novo arquivo...');
-            await fsPromises.writeFile(frasesPath, JSON.stringify({ frases: [] }, null, 2));
-            console.log('Arquivo de frases criado com sucesso!');
-        } else {
-            // Verifica se o arquivo tem conteúdo válido
-            const data = await fsPromises.readFile(frasesPath, 'utf8');
-            try {
-                JSON.parse(data);
-            } catch (error) {
-                console.log('Arquivo de frases corrompido. Recriando...');
-                await fsPromises.writeFile(frasesPath, JSON.stringify({ frases: [] }, null, 2));
-                console.log('Arquivo de frases recriado com sucesso!');
-            }
-        }
-    } catch (error) {
-        console.error('Erro ao inicializar arquivo de frases:', error);
-    }
-}
-
 // Função para ler as frases
 async function lerFrases() {
     try {
-        await inicializarFrases(); // Garante que o arquivo existe
-        const data = await fsPromises.readFile(frasesPath, 'utf8');
-        const parsed = JSON.parse(data);
-        return parsed.frases ? parsed : { frases: [] };
+        const textsDir = path.join(__dirname, 'media', 'texts');
+        const files = await fsPromises.readdir(textsDir);
+        
+        const frases = await Promise.all(files.map(async (file) => {
+            const filePath = path.join(textsDir, file);
+            const content = await fsPromises.readFile(filePath, 'utf8');
+            return content;
+        }));
+
+        return { frases };
     } catch (error) {
         console.error('Erro ao ler frases:', error);
         return { frases: [] };
@@ -93,7 +73,14 @@ async function lerFrases() {
 // Função para salvar as frases
 async function salvarFrases(data) {
     try {
-        await fsPromises.writeFile(frasesPath, JSON.stringify(data, null, 2));
+        const textsDir = path.join(__dirname, 'media', 'texts');
+        const files = await fsPromises.readdir(textsDir);
+        
+        await Promise.all(data.frases.map(async (frase, index) => {
+            const fileName = `frase_${Date.now()}_${index + 1}.txt`;
+            const filePath = path.join(textsDir, fileName);
+            await fsPromises.writeFile(filePath, frase);
+        }));
     } catch (error) {
         console.error('Erro ao salvar frases:', error);
     }
@@ -130,11 +117,12 @@ app.post('/frases', async (req, res) => {
             });
         }
 
-        const data = await lerFrases();
-        data.frases.push(frase);
-        await salvarFrases(data);
+        // Criar arquivo de texto para a nova frase
+        const fileName = `frase_${Date.now()}.txt`;
+        const filePath = path.join(__dirname, 'media', 'texts', fileName);
+        await fsPromises.writeFile(filePath, frase);
+        
         console.log('Frase adicionada com sucesso:', frase);
-
         res.status(201).json({ message: 'Frase adicionada com sucesso', frase });
     } catch (error) {
         console.error('Erro ao adicionar frase:', error);
@@ -146,14 +134,19 @@ app.post('/frases', async (req, res) => {
 app.delete('/frases/:index', async (req, res) => {
     try {
         const index = parseInt(req.params.index);
-        const data = await lerFrases();
+        const { frases } = await lerFrases();
 
-        if (index < 0 || index >= data.frases.length) {
+        if (index < 0 || index >= frases.length) {
             return res.status(404).json({ error: 'Frase não encontrada' });
         }
 
-        data.frases.splice(index, 1);
-        await salvarFrases(data);
+        const textsDir = path.join(__dirname, 'media', 'texts');
+        const files = await fsPromises.readdir(textsDir);
+        const fileToDelete = files[index];
+        
+        if (fileToDelete) {
+            await fsPromises.unlink(path.join(textsDir, fileToDelete));
+        }
 
         res.json({ message: 'Frase removida com sucesso' });
     } catch (error) {
@@ -435,17 +428,16 @@ async function downloadInstagramVideo() {
 // Função para obter uma frase aleatória e removê-la
 async function getRandomPhrase() {
     try {
-        const data = await lerFrases();
-        if (!data.frases || data.frases.length === 0) {
+        const { frases } = await lerFrases();
+        if (!frases || frases.length === 0) {
             console.log('Nenhuma frase disponível');
             return '';
         }
 
-        const randomIndex = Math.floor(Math.random() * data.frases.length);
-        const frase = data.frases[randomIndex];
+        const randomIndex = Math.floor(Math.random() * frases.length);
+        const frase = frases[randomIndex];
 
-        data.frases.splice(randomIndex, 1);
-        await salvarFrases(data);
+        await salvarFrases({ frases: frases.filter((_, index) => index !== randomIndex) });
 
         return frase;
     } catch (error) {
