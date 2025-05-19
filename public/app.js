@@ -91,6 +91,21 @@ async function loadContent() {
         const media = await mediaResponse.json();
         console.log('Mídias carregadas:', media);
         
+        // Para cada item de mídia do tipo texto, buscar o conteúdo
+        const mediaWithContent = await Promise.all(media.map(async item => {
+            if (item.type === 'text') {
+                try {
+                    const response = await fetch(item.url);
+                    const content = await response.text();
+                    return { ...item, content };
+                } catch (error) {
+                    console.error('Erro ao ler conteúdo do arquivo:', error);
+                    return item;
+                }
+            }
+            return item;
+        }));
+
         // Combinar e ordenar conteúdo
         const content = [
             ...frases.map((frase, index) => ({
@@ -98,9 +113,9 @@ async function loadContent() {
                 content: frase,
                 index
             })),
-            ...media.map(item => ({
+            ...mediaWithContent.map(item => ({
                 type: item.type,
-                content: item.url,
+                content: item.type === 'text' ? item.content : item.url,
                 fileName: item.fileName
             }))
         ].sort((a, b) => b.index - a.index);
