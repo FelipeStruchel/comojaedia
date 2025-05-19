@@ -764,7 +764,15 @@ client.on('ready', async () => {
 // Iniciar o servidor Express
 app.listen(PORT, async () => {
     log(`API rodando na porta ${PORT}`, 'success');
-    await inicializarFrases(); // Inicializa o arquivo de frases ao iniciar o servidor
+    
+    // Inicializar diretórios de mídia
+    try {
+        await initializeDirectories();
+        log('Diretórios de mídia inicializados com sucesso', 'success');
+    } catch (error) {
+        log(`Erro ao inicializar diretórios de mídia: ${error.message}`, 'error');
+    }
+
     log('Iniciando cliente WhatsApp...', 'info');
     // Iniciar o cliente WhatsApp
     initializeWithRetry().catch(error => {
