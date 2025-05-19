@@ -199,7 +199,11 @@ const client = new Client({
             '--no-default-browser-check',
             '--safebrowsing-disable-auto-update',
             '--disable-default-apps',
-            '--disable-translate'
+            '--disable-translate',
+            '--disable-audio-output',
+            '--disable-audio-input',
+            '--use-fake-ui-for-media-stream',
+            '--use-fake-device-for-media-stream'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 0,
