@@ -388,19 +388,19 @@ const dropZone = document.querySelector('#mediaForm .border-dashed');
 
 // Configurações de validação
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
-const ALLOWED_VIDEO_TYPES = ['video/mp4'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // Função para validar arquivo
 function validateFile(file) {
     // Verificar extensão
     const extension = file.name.split('.').pop().toLowerCase();
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'mkv'];
     
     if (!allowedExtensions.includes(extension)) {
         return {
             valid: false,
-            error: 'Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF ou MP4.'
+            error: 'Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF ou vídeos (MP4, MOV, AVI, MKV).'
         };
     }
 
@@ -411,7 +411,7 @@ function validateFile(file) {
     if (!isImage && !isVideo) {
         return {
             valid: false,
-            error: 'Tipo de arquivo não permitido. Use apenas imagens ou vídeos MP4.'
+            error: 'Tipo de arquivo não permitido. Use apenas imagens ou vídeos.'
         };
     }
 
