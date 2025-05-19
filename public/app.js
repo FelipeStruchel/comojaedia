@@ -81,10 +81,6 @@ fraseText.addEventListener('input', () => {
 async function loadContent() {
     try {
         console.log('Carregando conteúdo...');
-        // Carregar frases
-        const frasesResponse = await fetch('/frases');
-        const frases = await frasesResponse.json();
-        console.log('Frases carregadas:', frases);
         
         // Carregar mídias
         const mediaResponse = await fetch('/media');
@@ -106,21 +102,19 @@ async function loadContent() {
             return item;
         }));
 
-        // Combinar e ordenar conteúdo
-        const content = [
-            ...frases.map((frase, index) => ({
-                type: 'text',
-                content: frase,
-                index
-            })),
-            ...mediaWithContent.map(item => ({
-                type: item.type,
-                content: item.type === 'text' ? item.content : item.url,
-                fileName: item.fileName
-            }))
-        ].sort((a, b) => b.index - a.index);
+        // Ordenar conteúdo
+        const content = mediaWithContent.map(item => ({
+            type: item.type,
+            content: item.type === 'text' ? item.content : item.url,
+            fileName: item.fileName
+        })).sort((a, b) => {
+            // Ordenar por data (mais recente primeiro)
+            const dateA = a.fileName.split('_')[0];
+            const dateB = b.fileName.split('_')[0];
+            return dateB - dateA;
+        });
 
-        console.log('Conteúdo combinado:', content);
+        console.log('Conteúdo carregado:', content);
         const contentItems = document.getElementById('contentItems');
         if (!contentItems) {
             console.error('Elemento contentItems não encontrado');
@@ -133,7 +127,7 @@ async function loadContent() {
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <p class="text-gray-800 mb-2">${item.content}</p>
                         <button 
-                            onclick="deleteContent('text', ${item.index})"
+                            onclick="deleteContent('text', '${item.fileName}')"
                             class="text-red-500 hover:text-red-700 transition-colors"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
