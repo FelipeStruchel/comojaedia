@@ -544,7 +544,8 @@ app.post('/media', upload.single('file'), async (req, res) => {
     try {
         console.log('Recebendo upload de mídia:', {
             file: req.file,
-            body: req.body
+            body: req.body,
+            headers: req.headers
         });
 
         if (!req.file) {
@@ -562,9 +563,11 @@ app.post('/media', upload.single('file'), async (req, res) => {
         const media = await saveMedia(req.file, type);
         console.log('Mídia salva com sucesso:', media);
 
+        res.setHeader('Content-Type', 'application/json');
         res.status(201).json({ message: 'Mídia salva com sucesso', media });
     } catch (error) {
         console.error('Erro ao salvar mídia:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: error.message });
     }
 });

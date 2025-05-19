@@ -343,8 +343,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData
                 });
 
-                const data = await response.json();
-                console.log('Resposta do servidor:', data);
+                console.log('Status da resposta:', response.status);
+                console.log('Headers da resposta:', Object.fromEntries(response.headers.entries()));
+                
+                const responseText = await response.text();
+                console.log('Resposta bruta do servidor:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('Resposta parseada:', data);
+                } catch (parseError) {
+                    console.error('Erro ao fazer parse da resposta:', parseError);
+                    throw new Error('Erro ao processar resposta do servidor');
+                }
 
                 if (response.ok) {
                     showToast('Mídia enviada com sucesso');
