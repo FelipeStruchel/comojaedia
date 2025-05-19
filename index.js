@@ -616,12 +616,28 @@ app.get('/media/:type/:filename', (req, res) => {
         return res.status(404).json({ error: 'Arquivo não encontrado' });
     }
     
-    res.sendFile(filePath, (err) => {
-        if (err) {
-            console.error(`Erro ao enviar arquivo ${filePath}:`, err);
-            res.status(500).json({ error: 'Erro ao enviar arquivo' });
+    // Configurar headers antes de enviar o arquivo
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    
+    // Criar stream de leitura
+    const fileStream = fs.createReadStream(filePath);
+    
+    // Lidar com erros do stream
+    fileStream.on('error', (error) => {
+        console.error(`Erro ao ler arquivo ${filePath}:`, error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro ao ler arquivo' });
         }
     });
+    
+    // Lidar com abandono da requisição
+    req.on('aborted', () => {
+        fileStream.destroy();
+    });
+    
+    // Enviar arquivo
+    fileStream.pipe(res);
 });
 
 // Rota para listar mídia
