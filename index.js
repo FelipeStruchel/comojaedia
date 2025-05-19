@@ -535,7 +535,9 @@ async function retryOperation(operation, maxRetries = 3, delay = 5000) {
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const isVideo = file.mimetype.startsWith('video/');
-        const uploadDir = isVideo ? 'uploads/videos' : 'uploads/images';
+        const uploadDir = path.join(__dirname, 'media', isVideo ? 'videos' : 'images');
+        // Garantir que o diretório existe
+        fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
