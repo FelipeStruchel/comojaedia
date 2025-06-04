@@ -873,6 +873,31 @@ client.on('ready', async () => {
     log('Cron agendado com sucesso!', 'success');
 });
 
+// Função para inicializar diretórios de mídia
+async function initializeDirectories() {
+    try {
+        const directories = [
+            path.join(__dirname, 'media'),
+            path.join(__dirname, 'media', 'images'),
+            path.join(__dirname, 'media', 'videos'),
+            path.join(__dirname, 'media', 'texts'),
+            path.join(__dirname, 'temp')
+        ];
+
+        for (const dir of directories) {
+            if (!fs.existsSync(dir)) {
+                await fsPromises.mkdir(dir, { recursive: true });
+                log(`Diretório criado: ${dir}`, 'success');
+            }
+        }
+
+        log('Todos os diretórios de mídia inicializados com sucesso', 'success');
+    } catch (error) {
+        log(`Erro ao inicializar diretórios de mídia: ${error.message}`, 'error');
+        throw error;
+    }
+}
+
 // Iniciar o servidor Express
 app.listen(PORT, async () => {
     log(`API rodando na porta ${PORT}`, 'success');
