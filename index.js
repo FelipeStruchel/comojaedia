@@ -221,14 +221,14 @@ const client = new Client({
             '--disable-site-isolation-trials'
         ],
         executablePath: '/usr/bin/google-chrome',
-        timeout: 0,
+        timeout: 300000, // 5 minutos
         defaultViewport: null,
         pipe: true,
         dumpio: true
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
-    authTimeout: 0,
+    authTimeout: 300000, // 5 minutos
     qrQualityOptions: {
         quality: 0.8,
         margin: 4
@@ -279,13 +279,13 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
             try {
                 const initPromise = client.initialize();
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout na inicialização')), 30000)
+                    setTimeout(() => reject(new Error('Timeout na inicialização')), 300000) // 5 minutos
                 );
                 
                 await Promise.race([initPromise, timeoutPromise]);
                 
                 // Aguardar a página estar completamente carregada
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                await new Promise(resolve => setTimeout(resolve, 10000)); // 10 segundos
                 
                 // Verificar se o cliente está realmente pronto
                 if (!client.pupPage) {
