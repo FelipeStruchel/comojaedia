@@ -275,15 +275,29 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
             
             await new Promise(resolve => setTimeout(resolve, delay));
             
-            // Inicializar com timeout
-            const initPromise = client.initialize();
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout na inicialização')), 30000)
-            );
-            
-            await Promise.race([initPromise, timeoutPromise]);
-            log('Cliente inicializado com sucesso!', 'success');
-            return;
+            // Inicializar com timeout e tratamento de erro
+            try {
+                const initPromise = client.initialize();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout na inicialização')), 30000)
+                );
+                
+                await Promise.race([initPromise, timeoutPromise]);
+                
+                // Aguardar a página estar completamente carregada
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Verificar se o cliente está realmente pronto
+                if (!client.pupPage) {
+                    throw new Error('Página do Puppeteer não inicializada corretamente');
+                }
+                
+                log('Cliente inicializado com sucesso!', 'success');
+                return;
+            } catch (initError) {
+                log(`Erro durante inicialização: ${initError.message}`, 'error');
+                throw initError;
+            }
         } catch (error) {
             log(`Erro na tentativa ${i + 1}: ${error.message}`, 'error');
             if (i === retries - 1) throw error;
@@ -292,53 +306,63 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
     }
 }
 
-// Adicionar mais logs para debug
-client.on('disconnected', (reason) => {
+// Adicionar handler para erros de navegação
+client.on('disconnected', async (reason) => {
     log(`Cliente desconectado: ${reason}`, 'warning');
     log('Tentando reconectar em 60 segundos...', 'info');
-    setTimeout(() => {
+    setTimeout(async () => {
         log('Iniciando reconexão...', 'info');
-        initializeWithRetry().catch(err => {
+        try {
+            await initializeWithRetry();
+        } catch (err) {
             log(`Erro na reconexão: ${err.message}`, 'error');
             setTimeout(() => {
                 log('Tentando reconexão novamente após erro...', 'info');
                 initializeWithRetry();
             }, 60000);
-        });
+        }
     }, 60000);
 });
 
-client.on('auth_failure', (error) => {
+// Adicionar handler para erros de autenticação
+client.on('auth_failure', async (error) => {
     log(`Falha na autenticação: ${error}`, 'error');
     log(`Detalhes do erro: ${JSON.stringify(error, null, 2)}`, 'error');
     log('Tentando reiniciar em 60 segundos...', 'info');
-    setTimeout(() => {
+    setTimeout(async () => {
         log('Reiniciando após falha de autenticação...', 'info');
-        initializeWithRetry();
+        try {
+            await initializeWithRetry();
+        } catch (err) {
+            log(`Erro na reinicialização: ${err.message}`, 'error');
+            setTimeout(() => {
+                log('Tentando reinicialização novamente...', 'info');
+                initializeWithRetry();
+            }, 60000);
+        }
     }, 60000);
 });
 
 // Adicionar handler para erros não capturados
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
     log(`Erro não capturado: ${error.message}`, 'error');
     log(`Stack: ${error.stack}`, 'error');
-    if (error.message.includes('Protocol error') || error.message.includes('Session closed') || error.message.includes('Target closed')) {
+    if (error.message.includes('Protocol error') || 
+        error.message.includes('Session closed') || 
+        error.message.includes('Target closed') ||
+        error.message.includes('Execution context was destroyed')) {
         log('Erro de protocolo detectado, reiniciando em 60 segundos...', 'warning');
-        setTimeout(() => {
+        setTimeout(async () => {
             log('Reiniciando após erro de protocolo...', 'info');
-            initializeWithRetry();
-        }, 60000);
-    }
-});
-
-// Adicionar handler para erros de rejeição não tratados
-process.on('unhandledRejection', (reason, promise) => {
-    log(`Promessa rejeitada não tratada: ${reason}`, 'error');
-    if (reason.message && (reason.message.includes('Protocol error') || reason.message.includes('Session closed') || reason.message.includes('Target closed'))) {
-        log('Erro de protocolo detectado em promessa, reiniciando em 60 segundos...', 'warning');
-        setTimeout(() => {
-            log('Reiniciando após erro de protocolo em promessa...', 'info');
-            initializeWithRetry();
+            try {
+                await initializeWithRetry();
+            } catch (err) {
+                log(`Erro na reinicialização: ${err.message}`, 'error');
+                setTimeout(() => {
+                    log('Tentando reinicialização novamente...', 'info');
+                    initializeWithRetry();
+                }, 60000);
+            }
         }, 60000);
     }
 });
