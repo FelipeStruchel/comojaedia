@@ -203,7 +203,22 @@ const client = new Client({
             '--disable-audio-output',
             '--disable-audio-input',
             '--use-fake-ui-for-media-stream',
-            '--use-fake-device-for-media-stream'
+            '--use-fake-device-for-media-stream',
+            '--disable-indexed-db',
+            '--disable-databases',
+            '--disable-local-storage',
+            '--disable-session-storage',
+            '--disable-cache',
+            '--disable-application-cache',
+            '--disable-offline-load-stale-cache',
+            '--disk-cache-size=0',
+            '--media-cache-size=0',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=ScriptStreaming',
+            '--disable-features=IsolateOrigins',
+            '--disable-site-isolation-trials'
         ],
         executablePath: '/usr/bin/google-chrome',
         timeout: 0,
@@ -220,11 +235,35 @@ const client = new Client({
     }
 });
 
+// Função para limpar dados do Chrome
+async function limparDadosChrome() {
+    try {
+        log('Limpando dados do Chrome...', 'info');
+        const chromeDataPath = path.join(__dirname, '.wwebjs_auth', 'Default');
+        if (fs.existsSync(chromeDataPath)) {
+            const dirsToClean = ['IndexedDB', 'Local Storage', 'Session Storage', 'Cache', 'Code Cache'];
+            for (const dir of dirsToClean) {
+                const dirPath = path.join(chromeDataPath, dir);
+                if (fs.existsSync(dirPath)) {
+                    await fsPromises.rm(dirPath, { recursive: true, force: true });
+                    log(`Diretório ${dir} limpo com sucesso`, 'success');
+                }
+            }
+        }
+        log('Limpeza dos dados do Chrome concluída', 'success');
+    } catch (error) {
+        log(`Erro ao limpar dados do Chrome: ${error.message}`, 'error');
+    }
+}
+
 // Função para inicializar com retry
 async function initializeWithRetry(retries = 3, delay = 5000) {
     for (let i = 0; i < retries; i++) {
         try {
             log(`Tentativa ${i + 1} de ${retries} de inicialização...`, 'info');
+            
+            // Limpar dados do Chrome antes de cada tentativa
+            await limparDadosChrome();
             
             // Limpar processos do Chrome antes de cada tentativa
             try {
@@ -511,9 +550,9 @@ async function startVideoCheck() {
     }
     
     if (videoFound) {
-        console.log('Vídeo enviado com sucesso! Próxima verificação às 7:00 do próximo dia.');
+        console.log('Vídeo enviado com sucesso! Próxima verificação às 7:30 do próximo dia.');
     } else {
-        console.log(`Máximo de tentativas (${maxAttempts}) atingido. Próxima verificação às 7:00 do próximo dia.`);
+        console.log(`Máximo de tentativas (${maxAttempts}) atingido. Próxima verificação às 7:30 do próximo dia.`);
     }
 }
 
@@ -801,8 +840,8 @@ client.on('ready', async () => {
     // Aguarda 5 segundos para garantir que o WhatsApp Web está completamente inicializado
     await new Promise(resolve => setTimeout(resolve, 5000));
     
-    // Agendar tarefa para rodar todos os dias às 7:00
-    cron.schedule('0 7 * * *', () => {
+    // Agendar tarefa para rodar todos os dias às 7:30
+    cron.schedule('30 7 * * *', () => {
         log('Iniciando verificação diária de vídeos...', 'info');
         startVideoCheck();
     });
