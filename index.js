@@ -172,6 +172,12 @@ const password = '123Mudar@';
 console.log('Iniciando configuração do WhatsApp...');
 
 const chromePath = path.join(__dirname, "chrome-linux64", "chrome");
+const userDataDir = path.join(__dirname, 'chrome-data');
+
+// Garantir que o diretório de dados existe
+if (!fs.existsSync(userDataDir)) {
+    fs.mkdirSync(userDataDir, { recursive: true });
+}
 
 // Configuração do WhatsApp
 const client = new Client({
@@ -182,6 +188,7 @@ const client = new Client({
     puppeteer: {
         headless: 'new',
         args: [
+            `--user-data-dir=${userDataDir}`,
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
@@ -228,7 +235,27 @@ const client = new Client({
             '--disable-infobars',
             '--disable-logging',
             '--log-level=3',
-            '--silent'
+            '--silent',
+            '--disable-breakpad',
+            '--disable-crash-reporter',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--disable-features=AudioServiceOutOfProcess',
+            '--disable-features=IsolateOrigins',
+            '--disable-features=site-per-process',
+            '--disable-hang-monitor',
+            '--disable-ipc-flooding-protection',
+            '--disable-prompt-on-repost',
+            '--disable-renderer-backgrounding',
+            '--disable-sync',
+            '--force-color-profile=srgb',
+            '--metrics-recording-only',
+            '--no-default-browser-check',
+            '--no-first-run',
+            '--password-store=basic',
+            '--use-mock-keychain',
+            '--disable-blink-features=AutomationControlled',
+            '--remote-debugging-port=9222'
         ],
         executablePath: chromePath,
         timeout: 300000, // 5 minutos
@@ -237,7 +264,9 @@ const client = new Client({
             height: 720
         },
         pipe: true,
-        dumpio: true
+        dumpio: true,
+        ignoreHTTPSErrors: true,
+        protocolTimeout: 300000
     },
     restartOnAuthFail: true,
     qrMaxRetries: 5,
