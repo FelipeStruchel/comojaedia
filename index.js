@@ -180,7 +180,7 @@ const client = new Client({
         dataPath: path.join(__dirname, '.wwebjs_auth')
     }),
     puppeteer: {
-        headless: 'true',
+        headless: 'new',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -220,11 +220,22 @@ const client = new Client({
             '--disable-renderer-backgrounding',
             '--disable-features=ScriptStreaming',
             '--disable-features=IsolateOrigins',
-            '--disable-site-isolation-trials'
+            '--disable-site-isolation-trials',
+            '--window-size=1280,720',
+            '--hide-scrollbars',
+            '--disable-notifications',
+            '--disable-popup-blocking',
+            '--disable-infobars',
+            '--disable-logging',
+            '--log-level=3',
+            '--silent'
         ],
         executablePath: chromePath,
         timeout: 300000, // 5 minutos
-        defaultViewport: null,
+        defaultViewport: {
+            width: 1280,
+            height: 720
+        },
         pipe: true,
         dumpio: true
     },
