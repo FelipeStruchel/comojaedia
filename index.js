@@ -180,7 +180,7 @@ const client = new Client({
         dataPath: path.join(__dirname, '.wwebjs_auth')
     }),
     puppeteer: {
-        headless: 'new',
+        headless: 'true',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
