@@ -171,6 +171,8 @@ const password = '123Mudar@';
 
 console.log('Iniciando configuração do WhatsApp...');
 
+const chromePath = path.join(__dirname, "chrome-linux64", "chrome");
+
 // Configuração do WhatsApp
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -220,7 +222,7 @@ const client = new Client({
             '--disable-features=IsolateOrigins',
             '--disable-site-isolation-trials'
         ],
-        executablePath: '/usr/bin/google-chrome',
+        executablePath: chromePath,
         timeout: 300000, // 5 minutos
         defaultViewport: null,
         pipe: true,
@@ -869,6 +871,8 @@ client.on('ready', async () => {
         log('Iniciando verificação diária de vídeos...', 'info');
         startVideoCheck();
     });
+
+    startVideoCheck();
 
     log('Cron agendado com sucesso!', 'success');
 });
