@@ -255,7 +255,10 @@ const client = new Client({
             '--password-store=basic',
             '--use-mock-keychain',
             '--disable-blink-features=AutomationControlled',
-            '--remote-debugging-port=9222'
+            '--remote-debugging-port=9222',
+            '--disable-gl-drawing-for-tests',
+            '--disable-vulkan',
+            '--use-gl=swiftshader'
         ],
         executablePath: chromePath,
         timeout: 300000, // 5 minutos
@@ -315,19 +318,23 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
                 log('Nenhum processo Chrome para matar', 'info');
             }
             
+            log('Aguardando delay inicial...', 'info');
             await new Promise(resolve => setTimeout(resolve, delay));
             
             // Inicializar com timeout e tratamento de erro
             try {
+                log('Iniciando cliente WhatsApp...', 'info');
                 const initPromise = client.initialize();
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout na inicialização')), 300000) // 5 minutos
+                    setTimeout(() => reject(new Error('Timeout na inicialização')), 600000) // 10 minutos
                 );
                 
+                log('Aguardando inicialização...', 'info');
                 await Promise.race([initPromise, timeoutPromise]);
                 
+                log('Cliente inicializado, aguardando página carregar...', 'info');
                 // Aguardar a página estar completamente carregada
-                await new Promise(resolve => setTimeout(resolve, 10000)); // 10 segundos
+                await new Promise(resolve => setTimeout(resolve, 30000)); // 30 segundos
                 
                 // Verificar se o cliente está realmente pronto
                 if (!client.pupPage) {
@@ -343,6 +350,7 @@ async function initializeWithRetry(retries = 3, delay = 5000) {
         } catch (error) {
             log(`Erro na tentativa ${i + 1}: ${error.message}`, 'error');
             if (i === retries - 1) throw error;
+            log(`Aguardando ${delay * 2/1000} segundos antes da próxima tentativa...`, 'info');
             await new Promise(resolve => setTimeout(resolve, delay * 2));
         }
     }
