@@ -412,9 +412,27 @@ async function loginToInstagram() {
     }
 }
 
+// Função para obter o caminho do vídeo de hoje, se existir
+function getTodayVideoPath() {
+    const today = moment().format('YYYY-MM-DD');
+    const videoName = `video_${today}.mp4`;
+    const videoPath = path.join(tempDir, videoName);
+    if (fs.existsSync(videoPath)) {
+        return videoPath;
+    }
+    return null;
+}
+
 // Função para baixar o vídeo do Instagram
 async function downloadInstagramVideo() {
     try {
+        // Verifica se já existe vídeo de hoje
+        const todayVideoPath = getTodayVideoPath();
+        if (todayVideoPath) {
+            log('Vídeo de hoje já existe, reutilizando...', 'info');
+            return todayVideoPath;
+        }
+
         await loginToInstagram();
         
         const targetUsername = 'comojaediaa';
@@ -461,7 +479,9 @@ async function downloadInstagramVideo() {
                     }
                 });
                 
-                const videoPath = path.join(tempDir, `video_${Date.now()}.mp4`);
+                // Salvar com nome formatado pela data de hoje
+                const today = moment().format('YYYY-MM-DD');
+                const videoPath = path.join(tempDir, `video_${today}.mp4`);
                 log(`Salvando vídeo em: ${videoPath}`, 'info');
                 await fsPromises.writeFile(videoPath, videoResponse.data);
                 log('Vídeo baixado com sucesso!', 'success');
