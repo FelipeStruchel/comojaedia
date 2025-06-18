@@ -202,7 +202,7 @@ const client = new Client({
             height: 720
         },
         pipe: true,
-        dumpio: true,
+        dumpio: false,
         ignoreHTTPSErrors: true,
         protocolTimeout: 300000
     },
@@ -521,7 +521,7 @@ async function checkAndSendVideo() {
             const videoPath = await downloadInstagramVideo();
             if (videoPath) {
                 console.log('Vídeo novo encontrado! Iniciando envio...');
-                await sendWhatsAppMessage();
+                await sendWhatsAppMessage(videoPath);
                 return true;
             }
             console.log('Nenhum vídeo novo encontrado.');
@@ -744,9 +744,12 @@ app.delete('/media/:type/:filename', async (req, res) => {
 });
 
 // Função para enviar mensagem do WhatsApp
-async function sendWhatsAppMessage() {
+async function sendWhatsAppMessage(videoPath = null) {
     try {
-        const videoPath = await downloadInstagramVideo();
+        // Se não foi passado o videoPath, baixa agora
+        if (!videoPath) {
+            videoPath = await downloadInstagramVideo();
+        }
         if (!videoPath) {
             log('Nenhum vídeo encontrado para enviar', 'warning');
             return;
