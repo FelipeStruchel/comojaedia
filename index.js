@@ -514,7 +514,7 @@ async function checkAndSendVideo() {
         
         // Adiciona timeout de 5 minutos para a verificação
         const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout: Verificação demorou mais de 5 minutos')), 5 * 60 * 1000);
+            setTimeout(() => reject(new Error('Timeout: Verificação demorou mais de 10 minutos')), 10 * 60 * 1000);
         });
 
         const videoCheckPromise = (async () => {
