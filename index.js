@@ -564,17 +564,20 @@ async function startVideoCheck() {
     console.log('Iniciando processo de verificação de vídeos...');
     let videoFound = false;
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 8; // Máximo de 8 tentativas (das 7h às 14h)
     
     while (!videoFound && attempts < maxAttempts) {
         attempts++;
-        console.log(`Tentativa ${attempts} de ${maxAttempts}...`);
+        const currentHour = moment().hour();
+        console.log(`Tentativa ${attempts} de ${maxAttempts}... (Hora atual: ${currentHour}h)`);
         
         videoFound = await checkAndSendVideo();
         
         if (!videoFound) {
-            console.log(`Aguardando 30 minutos para próxima verificação... (Tentativa ${attempts}/${maxAttempts})`);
-            await new Promise(resolve => setTimeout(resolve, 30 * 60 * 1000));
+            if (attempts < maxAttempts) {
+                console.log(`Aguardando 1 hora para próxima verificação... (Tentativa ${attempts}/${maxAttempts})`);
+                await new Promise(resolve => setTimeout(resolve, 60 * 60 * 1000)); // 1 hora
+            }
         }
     }
     
