@@ -46,6 +46,14 @@
                         <input id="eventName" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: Chacrinha" />
                         <label for="eventDate" class="block text-sm font-medium text-gray-700 mb-2 mt-4">Data do evento</label>
                         <input id="eventDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                        <label for="eventTime" class="block text-sm font-medium text-gray-700 mb-2 mt-4">Hora do evento (opcional)</label>
+                        <div class="flex space-x-2 items-center mb-2">
+                            <input id="eventTime" type="time" value="00:00" class="px-3 py-2 border border-gray-300 rounded-lg" />
+                            <div class="flex space-x-2">
+                                <button id="btnStartOfDay" type="button" class="px-3 py-2 bg-gray-200 rounded-lg text-sm">Começo do dia</button>
+                                <button id="btnEndOfDay" type="button" class="px-3 py-2 bg-gray-200 rounded-lg text-sm">Fim do dia</button>
+                            </div>
+                        </div>
                     </div>
                     <button id="createEventBtn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors duration-200">Criar Evento</button>
                 </div>

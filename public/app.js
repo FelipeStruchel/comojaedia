@@ -436,17 +436,28 @@ function renderEventsList() {
 async function createEvent() {
     const name = document.getElementById('eventName').value.trim();
     const date = document.getElementById('eventDate').value;
+    const time = document.getElementById('eventTime') ? document.getElementById('eventTime').value : '';
     if (!name || !date) {
         showToast('Preencha nome e data do evento', 'error');
         return;
     }
     try {
-        const resp = await fetch('/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, date }) });
+        // combine date and time; if time is empty, default to 00:00
+        let isoDate;
+        if (time && time.trim() !== '') {
+            // date is yyyy-mm-dd, time is HH:MM
+            isoDate = new Date(`${date}T${time}:00`);
+        } else {
+            isoDate = new Date(`${date}T00:00:00`);
+        }
+
+        const resp = await fetch('/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, date: isoDate.toISOString() }) });
         if (!resp.ok) throw new Error('Erro ao criar evento');
         const newEv = await resp.json();
         events.push(newEv);
         document.getElementById('eventName').value = '';
         document.getElementById('eventDate').value = '';
+        if (document.getElementById('eventTime')) document.getElementById('eventTime').value = '00:00';
         showToast('Evento criado com sucesso');
         loadContent();
         loadEvents();
@@ -512,6 +523,18 @@ const createEventBtn = document.getElementById('createEventBtn');
 if (createEventBtn) createEventBtn.addEventListener('click', (e) => {
     e.preventDefault();
     createEvent();
+});
+
+// Start/End of day buttons
+const btnStartOfDay = document.getElementById('btnStartOfDay');
+const btnEndOfDay = document.getElementById('btnEndOfDay');
+if (btnStartOfDay) btnStartOfDay.addEventListener('click', () => {
+    const t = document.getElementById('eventTime');
+    if (t) t.value = '00:00';
+});
+if (btnEndOfDay) btnEndOfDay.addEventListener('click', () => {
+    const t = document.getElementById('eventTime');
+    if (t) t.value = '23:59';
 });
 
 // Elementos do formulário de mídia

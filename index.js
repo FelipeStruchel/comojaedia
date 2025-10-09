@@ -2,6 +2,7 @@ const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const cron = require("node-cron");
 const moment = require("moment");
+require('moment-timezone');
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const path = require("path");
@@ -123,12 +124,35 @@ app.get('/events', async (req, res) => {
   }
 });
 
+// simple db-status endpoint
+app.get('/db-status', (req, res) => {
+  res.json({ connected: dbConnected });
+});
+
 app.post('/events', async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB unavailable' });
   try {
-    const { name, date } = req.body;
+    const { name, date } = req.body; // date expected as ISO string
     if (!name || !date) return res.status(400).json({ error: 'name and date are required' });
-    const ev = new Event({ name, date: new Date(date) });
+
+    // Interpret incoming date string in America/Sao_Paulo timezone.
+    // If client sends an ISO with timezone, moment.tz will respect it; otherwise we assume it's local date/time in Sao Paulo.
+    let m = moment.tz(date, 'America/Sao_Paulo');
+
+    if (!m.isValid()) {
+      // Try parsing as plain ISO fallback
+      m = moment(date);
+      if (!m.isValid()) return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    // Check if the event time is in the past relative to Sao_Paulo now
+    const nowSP = moment.tz('America/Sao_Paulo');
+    if (m.isBefore(nowSP)) {
+      return res.status(400).json({ error: 'Cannot create event in the past' });
+    }
+
+    // Store the UTC instant corresponding to the Sao_Paulo local time
+    const ev = new Event({ name, date: m.toDate() });
     await ev.save();
     res.status(201).json(ev);
   } catch (err) {
