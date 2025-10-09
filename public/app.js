@@ -1,24 +1,43 @@
-// Configuração da data alvo
-const targetDate = new Date('2025-07-25');
+// Events and countdown state
+let events = [];
 
-// Função para atualizar o contador
+function pickNearestEvents() {
+    const now = new Date();
+    const future = events.filter(e => new Date(e.date) > now).sort((a,b)=> new Date(a.date)-new Date(b.date));
+    if (future.length === 0) return [];
+    const nearestDate = new Date(future[0].date).toISOString();
+    // Return all events that share the same nearest date
+    return future.filter(e => new Date(e.date).toISOString() === nearestDate);
+}
+
 function updateCountdown() {
+    const nearest = pickNearestEvents();
+    if (nearest.length === 0) {
+        document.getElementById('countdown').textContent = 'Nenhum evento cadastrado';
+        document.getElementById('nextEvents').textContent = '';
+        return;
+    }
+
+    const targetDate = new Date(nearest[0].date);
     const now = new Date();
     const diff = targetDate - now;
+    if (diff <= 0) {
+        document.getElementById('countdown').textContent = 'O evento já ocorreu';
+        document.getElementById('nextEvents').textContent = nearest.map(e=>e.name).join(', ');
+        return;
+    }
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    document.getElementById('countdown').innerHTML = `
-        ${days} dias, ${hours} horas, ${minutes} minutos e ${seconds} segundos
-    `;
+    document.getElementById('countdown').textContent = `${days} dias, ${hours} horas, ${minutes} minutos e ${seconds} segundos`;
+    document.getElementById('nextEvents').textContent = nearest.map(e=>e.name).join(' ou ');
 }
 
-// Atualizar contador a cada segundo
 setInterval(updateCountdown, 1000);
-updateCountdown();
+
 
 // Função para mostrar mensagens de feedback
 function showToast(message, type = 'success') {
@@ -33,33 +52,41 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Gerenciamento de Tabs
-const textTab = document.getElementById('textTab');
-const mediaTab = document.getElementById('mediaTab');
+// Gerenciamento de Tabs (compatível com IDs antigos e novos)
+const textTab = document.getElementById('textTab2') || document.getElementById('textTab');
+const mediaTab = document.getElementById('mediaTab2') || document.getElementById('mediaTab');
 const textForm = document.getElementById('textForm');
 const mediaForm = document.getElementById('mediaForm');
 
 // Função para alternar entre os formulários
 function switchForm(showText) {
     if (showText) {
-        textTab.classList.add('bg-indigo-600', 'text-white');
-        textTab.classList.remove('bg-gray-200', 'text-gray-700');
-        mediaTab.classList.add('bg-gray-200', 'text-gray-700');
-        mediaTab.classList.remove('bg-indigo-600', 'text-white');
+        if (textTab) {
+            textTab.classList.add('bg-indigo-600', 'text-white');
+            textTab.classList.remove('bg-gray-200', 'text-gray-700');
+        }
+        if (mediaTab) {
+            mediaTab.classList.add('bg-gray-200', 'text-gray-700');
+            mediaTab.classList.remove('bg-indigo-600', 'text-white');
+        }
         textForm.classList.remove('hidden');
         mediaForm.classList.add('hidden');
     } else {
-        mediaTab.classList.add('bg-indigo-600', 'text-white');
-        mediaTab.classList.remove('bg-gray-200', 'text-gray-700');
-        textTab.classList.add('bg-gray-200', 'text-gray-700');
-        textTab.classList.remove('bg-indigo-600', 'text-white');
+        if (mediaTab) {
+            mediaTab.classList.add('bg-indigo-600', 'text-white');
+            mediaTab.classList.remove('bg-gray-200', 'text-gray-700');
+        }
+        if (textTab) {
+            textTab.classList.add('bg-gray-200', 'text-gray-700');
+            textTab.classList.remove('bg-indigo-600', 'text-white');
+        }
         mediaForm.classList.remove('hidden');
         textForm.classList.add('hidden');
     }
 }
 
-textTab.addEventListener('click', () => switchForm(true));
-mediaTab.addEventListener('click', () => switchForm(false));
+if (textTab) textTab.addEventListener('click', () => switchForm(true));
+if (mediaTab) mediaTab.addEventListener('click', () => switchForm(false));
 
 // Gerenciamento de Frases
 const fraseText = document.getElementById('fraseText');
@@ -373,6 +400,118 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Carregar conteúdo inicial
     loadContent();
+    loadEvents();
+});
+
+// Events: load and create
+async function loadEvents() {
+    try {
+        const resp = await fetch('/events');
+        events = await resp.json();
+        renderEventsList();
+    } catch (err) {
+        console.error('Erro ao carregar eventos:', err);
+    }
+}
+
+function renderEventsList() {
+    const container = document.getElementById('eventsListContainer');
+    // render events list into its container
+    const eventsHtml = events.map(ev => `
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <div class="flex justify-between items-center">
+                <div>
+                    <div class="font-semibold">${ev.name}</div>
+                    <div class="text-sm text-gray-500">${new Date(ev.date).toLocaleString()}</div>
+                </div>
+                <div>
+                    <button onclick="deleteEvent('${ev._id}')" class="text-red-500">Excluir</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    if (container) container.innerHTML = eventsHtml;
+}
+
+async function createEvent() {
+    const name = document.getElementById('eventName').value.trim();
+    const date = document.getElementById('eventDate').value;
+    if (!name || !date) {
+        showToast('Preencha nome e data do evento', 'error');
+        return;
+    }
+    try {
+        const resp = await fetch('/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, date }) });
+        if (!resp.ok) throw new Error('Erro ao criar evento');
+        const newEv = await resp.json();
+        events.push(newEv);
+        document.getElementById('eventName').value = '';
+        document.getElementById('eventDate').value = '';
+        showToast('Evento criado com sucesso');
+        loadContent();
+        loadEvents();
+    } catch (err) {
+        console.error(err);
+        showToast('Erro ao criar evento', 'error');
+    }
+}
+
+async function deleteEvent(id) {
+    try {
+        const resp = await fetch(`/events/${id}`, { method: 'DELETE' });
+        // Backend doesn't yet have DELETE route; fallback: reload events
+        await loadEvents();
+        loadContent();
+        showToast('Evento removido');
+    } catch (err) {
+        console.error('Erro ao remover evento:', err);
+        showToast('Erro ao remover evento', 'error');
+    }
+}
+
+// Wire events tab switching (robust to presence of old/new tab IDs)
+const eventsTab = document.getElementById('eventsTab');
+const textTabMain = document.getElementById('textTab2') || document.getElementById('textTab');
+const mediaTabMain = document.getElementById('mediaTab2') || document.getElementById('mediaTab');
+const eventsForm = document.getElementById('eventsForm');
+const textFormMain = document.getElementById('textForm');
+const mediaFormMain = document.getElementById('mediaForm');
+
+function activateEventsTab() {
+    if (eventsTab) eventsTab.classList.add('bg-indigo-600','text-white');
+    if (textTabMain) textTabMain.classList.remove('bg-indigo-600','text-white');
+    if (mediaTabMain) mediaTabMain.classList.remove('bg-indigo-600','text-white');
+    if (eventsForm) eventsForm.classList.remove('hidden');
+    if (textFormMain) textFormMain.classList.add('hidden');
+    if (mediaFormMain) mediaFormMain.classList.add('hidden');
+}
+
+function activateTextTab() {
+    if (textTabMain) textTabMain.classList.add('bg-indigo-600','text-white');
+    if (eventsTab) eventsTab.classList.remove('bg-indigo-600','text-white');
+    if (mediaTabMain) mediaTabMain.classList.remove('bg-indigo-600','text-white');
+    if (eventsForm) eventsForm.classList.add('hidden');
+    if (textFormMain) textFormMain.classList.remove('hidden');
+    if (mediaFormMain) mediaFormMain.classList.add('hidden');
+}
+
+function activateMediaTab() {
+    if (mediaTabMain) mediaTabMain.classList.add('bg-indigo-600','text-white');
+    if (eventsTab) eventsTab.classList.remove('bg-indigo-600','text-white');
+    if (textTabMain) textTabMain.classList.remove('bg-indigo-600','text-white');
+    if (eventsForm) eventsForm.classList.add('hidden');
+    if (textFormMain) textFormMain.classList.add('hidden');
+    if (mediaFormMain) mediaFormMain.classList.remove('hidden');
+}
+
+if (eventsTab) eventsTab.addEventListener('click', activateEventsTab);
+if (textTabMain) textTabMain.addEventListener('click', activateTextTab);
+if (mediaTabMain) mediaTabMain.addEventListener('click', activateMediaTab);
+
+const createEventBtn = document.getElementById('createEventBtn');
+if (createEventBtn) createEventBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    createEvent();
 });
 
 // Elementos do formulário de mídia

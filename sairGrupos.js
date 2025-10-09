@@ -1,13 +1,26 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const moment = require('moment');
+const fs = require('fs');
+const path = require('path');
+
+// Detectar caminho do Chrome/Chromium de forma condicional por plataforma
+const os = require('os');
+let chromePath;
+if (process.platform === 'win32') {
+    const candidates = [
+        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe')
+    ];
+    chromePath = candidates.find(p => p && fs.existsSync(p));
+}
 
 // Configuração do WhatsApp
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    puppeteer: Object.assign({
+        headless: (process.env.PUPPETEER_HEADLESS ? process.env.PUPPETEER_HEADLESS === 'true' : false),
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -17,7 +30,7 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu'
         ]
-    }
+    }, (chromePath ? { executablePath: chromePath } : {}))
 });
 
 // Função para verificar se um grupo está inativo

@@ -1,7 +1,11 @@
 FROM node:18-slim
 
-# Instalar dependências necessárias
-RUN apt-get update && apt-get install -y \
+# Set timezone for the image (Brasília)
+ENV TZ=America/Sao_Paulo
+
+# Instalar dependências necessárias (inclui tzdata para timezone)
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
+    tzdata \
     wget \
     gnupg \
     ca-certificates \
@@ -24,7 +28,9 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
 
 # Instalar Google Chrome
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
@@ -38,11 +44,12 @@ WORKDIR /app
 
 # Copiar arquivos do projeto
 COPY package*.json ./
-COPY index.js ./
-COPY public ./public
 
-# Instalar dependências
-RUN npm install --production --no-optional
+# Instalar dependências (usa cache da camada quando package.json não muda)
+RUN npm ci --production --no-optional || npm install --production --no-optional
+
+# Copiar todo o código da aplicação (após instalar deps para melhor cache)
+COPY . .
 
 # Expor porta
 EXPOSE 3000
