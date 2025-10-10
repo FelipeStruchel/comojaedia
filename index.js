@@ -105,19 +105,147 @@ connectWithRetry(mongoConnStr).catch((e) => {
   log(`connectWithRetry encerrou com erro inesperado: ${e.message}`, 'error');
 });
 
+// OpenAI helper: generate a short caption using the provided persona and context
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+
+async function callOpenAIChat(messages, timeoutMs = 60000, maxCompletionTokensOverride = null) {
+  if (!OPENAI_API_KEY) {
+    log('OPENAI_API_KEY não configurada, pulando chamada à OpenAI', 'warning');
+    return null;
+  }
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages,
+        // For newer models the correct param name is max_completion_tokens
+        max_completion_tokens: parseInt(
+          (maxCompletionTokensOverride !== null
+            ? String(maxCompletionTokensOverride)
+            : process.env.OPENAI_MAX_COMPLETION_TOKENS || '120'),
+          10
+        ),
+        // Note: some models don't support temperature; omit it to use model default
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      log(`OpenAI responded with ${res.status}: ${txt}`, 'error');
+      return null;
+    }
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content || null;
+    return content ? content.trim() : null;
+  } catch (err) {
+    // Detect aborts/timeouts and log context for debugging
+    if (err.name === 'AbortError' || /aborted|abort/i.test(err.message)) {
+      // Summarize messages content (not full content) to avoid huge logs
+      const summary = (messages || []).map((m) => {
+        const txt = (m.content || '').replace(/\s+/g, ' ').trim();
+        return (txt.length > 120) ? txt.slice(0, 117) + '...' : txt;
+      }).slice(0, 10).join(' | ');
+      log(`OpenAI call aborted (timeout ${timeoutMs}ms). Model=${OPENAI_MODEL} SummaryMessages=[${summary}]`, 'error');
+    } else {
+      log(`Erro ao chamar OpenAI: ${err.message}`, 'error');
+    }
+    return null;
+  }
+}
+
+// Persona/system prompt from user
+const AI_PERSONA = `Você é um bot de WhatsApp feito por Grego.
+Seu estilo é ácido, engraçado e levemente ofensivo — mas nunca cruel.
+Você fala como aquele amigo sarcástico que sempre tem uma resposta pronta.
+Prefere debochar da situação do que dar lição de moral.
+O humor é direto, às vezes seco, às vezes absurdo, mas sempre com timing.
+Nada de frases inspiradoras, metáforas batidas ou reflexões de LinkedIn.
+Se for filosófico, é no meme — tipo “a vida tá aí pra decepcionar”.
+Use português brasileiro, gírias leves e frases curtas.
+Não use caps lock, emojis só quando deixarem a frase mais engraçada (1 ou 2 no máximo).
+Pode ser ligeiramente rude se for engraçado, mas nunca chato ou ofensivo de verdade.
+O objetivo é parecer o amigo do grupo que zoa todo mundo, inclusive ele mesmo.`;
+
+// Note: we rely on the prompt asking OpenAI to "RETORNE SOMENTE" the final message.
+// The raw response from callOpenAIChat is already trimmed, so we return it directly
+// to avoid aggressive sanitization that could remove intended words.
+
+async function generateAICaption({ purpose = 'greeting', names = [], timeStr = null, noEvents = false, dayOfWeek = null }) {
+  if (!OPENAI_API_KEY) return null;
+  const eventList = names.length ? names.join(', ') : 'nenhum evento';
+  const userMsgParts = [];
+  if (purpose === 'greeting') {
+    if (noEvents) {
+      userMsgParts.push(`Gere uma legenda curta (1-2 frases) em português brasileiro para um grupo de WhatsApp dizendo que não há eventos hoje. Convide a galera a cadastrar no link: https://vmi2849405.contaboserver.net. Seja ácido, engraçado e levemente ofensivo conforme a persona. Use no máximo 2 emojis. RETORNE SOMENTE a legenda final, sem explicações, sem introduções como 'claro' ou 'vou gerar', sem passos.`);
+      if (dayOfWeek) userMsgParts.push(`Contexto: hoje é ${dayOfWeek}.`);
+    } else {
+      userMsgParts.push(`Gere uma legenda curta (1-2 frases) em português brasileiro mencionando os eventos do dia: ${eventList}${timeStr ? ' (' + timeStr + ')' : ''}. Seja ácido, engraçado, sarcástico e leve. Evite metáforas inspiracionais. Máximo 2 emojis. RETORNE SOMENTE a legenda final, sem explicações, sem introduções como 'claro' ou 'vou gerar', sem passos.`);
+      if (dayOfWeek) userMsgParts.push(`Contexto: hoje é ${dayOfWeek}.`);
+    }
+  } else if (purpose === 'event') {
+    // Require the AI to include a short comment/observation in addition to the announcement
+    userMsgParts.push(`Gere uma mensagem de anúncio para o grupo dizendo que é hora do evento ${eventList}${timeStr ? ' (' + timeStr + ')' : ''}. A mensagem deve conter: 1) uma frase clara anunciando que o evento começou; 2) uma observação curta e sarcástica (1 frase) comentando a situação — tipo uma zoeira rápida sobre o evento ou os participantes. Curta, sarcástica, com humor ácido, em português brasileiro. Até 2 emojis, nada cruel. RETORNE SOMENTE a mensagem final (duas frases no máximo), sem explicações.`);
+  }
+
+  const messages = [
+    { role: 'system', content: AI_PERSONA },
+    { role: 'user', content: userMsgParts.join('\n') },
+  ];
+
+  const raw = await callOpenAIChat(messages);
+  return raw;
+}
+
 // Event model
 const eventSchema = new mongoose.Schema({
   name: { type: String, required: true },
   date: { type: Date, required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  announced: { type: Boolean, default: false },
+  announcedAt: { type: Date, default: null },
+  claimedBy: { type: String, default: null },
+  claimedAt: { type: Date, default: null }
 });
 const Event = mongoose.models.Event || mongoose.model('Event', eventSchema);
+
+// Analysis log schema - stores !analise attempts and responses for auditing
+const analysisLogSchema = new mongoose.Schema({
+  user: { type: String, required: true }, // sender id (ex: 5514xxxx@c.us)
+  chatId: { type: String, required: false },
+  requestedN: { type: Number, default: 0 },
+  analyzedCount: { type: Number, default: 0 },
+  messages: { type: Array, default: [] }, // short snippets of messages
+  result: { type: String, default: null },
+  error: { type: String, default: null },
+  durationMs: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+const AnalysisLog = mongoose.models.AnalysisLog || mongoose.model('AnalysisLog', analysisLogSchema);
+
+// In-memory fallback for rate-limiting when DB is unavailable
+const lastAnalyses = new Map(); // key: user id, value: timestamp millis
+const ANALYSE_COOLDOWN_SECONDS = parseInt(process.env.ANALYSE_COOLDOWN_SECONDS || '300', 10);
 
 // Events API
 app.get('/events', async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB unavailable' });
   try {
-    const events = await Event.find().sort({ date: 1 }).lean();
+    // Only return events that are upcoming, not yet announced and not claimed by any worker
+    const now = new Date();
+    const events = await Event.find({
+      announced: false,
+      claimedBy: null,
+      date: { $gt: now }
+    }).sort({ date: 1 }).lean();
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -884,20 +1012,50 @@ async function sendWhatsAppMessage(videoPath = null) {
       throw new Error("WhatsApp Web não está inicializado corretamente");
     }
 
-    // Buscar evento(s) mais próximo(s) no banco
+    // Buscar evento(s) mais próximo(s) no banco e compor legenda com contagem dinâmica
     let defaultMessage;
     try {
       const futureEvents = await Event.find({ date: { $gt: new Date() } }).sort({ date: 1 }).lean();
       if (futureEvents && futureEvents.length > 0) {
         // selecionar todos os eventos que compartilham a mesma data/hora mais próxima
-        const nearestIso = new Date(futureEvents[0].date).toISOString();
+        const nearestDate = new Date(futureEvents[0].date);
+        const nearestIso = nearestDate.toISOString();
         const nearestEvents = futureEvents.filter(e => new Date(e.date).toISOString() === nearestIso);
         const names = nearestEvents.map(e => e.name).join(' ou ');
-  const daysRemaining = moment(nearestIso).startOf('day').diff(moment().startOf('day'), 'days');
-        defaultMessage = `Faltam ${daysRemaining} dias para ${names} e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
+
+        // Calcular diferença em São Paulo
+        const target = moment.tz(nearestDate, 'America/Sao_Paulo');
+        const nowSP = moment.tz('America/Sao_Paulo');
+        let diffMs = target.diff(nowSP);
+
+        if (diffMs <= 0) {
+          defaultMessage = `Eventos do dia: ${names}`;
+        } else {
+          const totalMinutes = Math.floor(diffMs / (1000 * 60));
+          const days = Math.floor(totalMinutes / (60 * 24));
+          const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+          const minutes = totalMinutes % 60;
+
+          const parts = [];
+          if (days > 0) parts.push(`${days} ${days === 1 ? 'dia' : 'dias'}`);
+          if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'hora' : 'horas'}`);
+          if (minutes > 0) parts.push(`${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`);
+          let human;
+          if (parts.length === 0) {
+            human = 'menos de 1 minuto';
+          } else if (parts.length === 1) {
+            human = parts[0];
+          } else if (parts.length === 2) {
+            human = parts.join(' e ');
+          } else {
+            human = parts.slice(0, -1).join(', ') + ' e ' + parts.slice(-1);
+          }
+
+          defaultMessage = `Faltam ${human} para ${names} e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
+        }
       } else {
-        const daysRemaining = getDaysRemaining();
-        defaultMessage = `Faltam ${daysRemaining} dias para a chacrinha e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
+        // Nenhum evento cadastrado — mensagem convidando a cadastrar com link
+        defaultMessage = `Nenhum evento cadastrado ainda. Cadastre um aqui: https://vmi2849405.contaboserver.net`;
       }
     } catch (err) {
       log(`Erro ao buscar eventos para legenda: ${err.message}`, 'error');
@@ -905,8 +1063,23 @@ async function sendWhatsAppMessage(videoPath = null) {
       defaultMessage = `Faltam ${daysRemaining} dias para a chacrinha e eu ainda não consigo acreditar que hoje já é dia ${moment().format('DD')}! 🎉`;
     }
 
-    const groupId = "120363339314665620@g.us";
-    const confirmationNumber = "5514982276185@c.us";
+    // Try to generate with AI (greeting caption). If AI is available, prefer it but keep fallback.
+    try {
+      let ai = null;
+      if (futureEvents && futureEvents.length > 0) {
+        const names = futureEvents.filter(e => new Date(e.date).toISOString() === nearestIso).map(e => e.name);
+        const weekday = moment.tz('America/Sao_Paulo').format('dddd');
+        ai = await generateAICaption({ purpose: 'greeting', names, timeStr: moment.tz(nearestDate, 'America/Sao_Paulo').format('HH:mm'), noEvents: false, dayOfWeek: weekday });
+      } else {
+        const weekday = moment.tz('America/Sao_Paulo').format('dddd');
+        ai = await generateAICaption({ purpose: 'greeting', names: [], noEvents: true, dayOfWeek: weekday });
+      }
+      if (ai) defaultMessage = ai;
+    } catch (allErr) {
+      log(`Erro ao processar !all: ${allErr.message}`, 'error');
+      await msg.reply('Falha ao tentar mencionar todos.');
+      return;
+    }
 
     // 1. Enviar vídeo com a mensagem de contagem regressiva (baseada em eventos cadastrados)
     try {
@@ -982,6 +1155,92 @@ async function sendWhatsAppMessage(videoPath = null) {
   }
 }
 
+// Process expired events: announce on WhatsApp and remove from DB
+async function processExpiredEvents() {
+  if (!dbConnected) {
+    log('DB not connected, skipping expired events processing', 'info');
+    return;
+  }
+
+  // Ensure client is ready to send messages
+  if (!client || !client.pupPage) {
+    log('WhatsApp client not ready, skipping expired events processing', 'info');
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const workerId = `worker-${process.pid}-${Date.now()}`;
+
+    // Atomically claim one timestamp group: find one event not yet announced and not claimed (or claimed long ago)
+    // We choose the earliest event.date <= now
+    const claimThreshold = new Date(Date.now() - 5 * 60 * 1000); // consider claims older than 5min stale
+
+    const claimQuery = {
+      date: { $lte: now },
+      announced: false,
+      $or: [
+        { claimedBy: null },
+        { claimedAt: { $lte: claimThreshold } }
+      ]
+    };
+
+    const toClaim = await Event.findOneAndUpdate(
+      claimQuery,
+      { $set: { claimedBy: workerId, claimedAt: new Date() } },
+      { sort: { date: 1 }, returnDocument: 'after' }
+    ).lean();
+
+    if (!toClaim) return; // nothing to claim now
+
+    const claimIso = new Date(toClaim.date).toISOString();
+    // Now fetch all events that share this exact instant and are not yet announced
+    const groupEvents = await Event.find({ date: new Date(claimIso), announced: false }).lean();
+    if (!groupEvents || groupEvents.length === 0) {
+      // Nothing to do
+      // release claim
+      await Event.updateMany({ _id: toClaim._id, claimedBy: workerId }, { $set: { claimedBy: null, claimedAt: null } });
+      return;
+    }
+
+    const names = groupEvents.map(e => e.name).join(' e ');
+    const timeStr = moment.tz(new Date(groupEvents[0].date), 'America/Sao_Paulo').format('DD/MM/YYYY [às] HH:mm');
+    // Prefer AI-generated announcement when available
+    let message = `É hora do evento ${names}! (${timeStr}) 🎉`;
+    try {
+      const aiMsg = await generateAICaption({ purpose: 'event', names: groupEvents.map(e => e.name), timeStr });
+      if (aiMsg) message = aiMsg;
+    } catch (aiErr) {
+      log(`OpenAI announcement failed: ${aiErr && aiErr.message ? aiErr.message : aiErr}`, 'info');
+    }
+    const groupId = "120363339314665620@g.us";
+
+    try {
+      await retryOperation(async () => {
+        await client.sendMessage(groupId, message);
+      });
+      log(`Anúncio enviado para evento(s): ${names}`, 'success');
+
+      // Mark announced atomically for all group events
+      const ids = groupEvents.map(e => e._id);
+      await Event.updateMany({ _id: { $in: ids } }, { $set: { announced: true, announcedAt: new Date() }, $unset: { claimedBy: "", claimedAt: "" } });
+      // Optionally delete events after announcing or keep for audit; here we delete
+      await Event.deleteMany({ _id: { $in: ids } });
+      log(`Evento(s) removido(s) do banco: ${names}`, 'info');
+    } catch (sendErr) {
+      log(`Falha ao enviar anúncio de evento(s) ${names}: ${sendErr.message}`, 'error');
+      // rollback claim so others can pick it later
+      try {
+        await Event.updateMany({ _id: { $in: groupEvents.map(e => e._id) }, claimedBy: workerId }, { $set: { claimedBy: null, claimedAt: null } });
+      } catch (rollbackErr) {
+        log(`Erro ao liberar claim após falha: ${rollbackErr.message}`, 'error');
+      }
+    }
+  } catch (err) {
+    log(`Erro no processamento de eventos expirados: ${err.message}`, 'error');
+  }
+}
+
 // Configurar evento de QR Code do WhatsApp
 client.on("qr", (qr) => {
   log("QR Code gerado! Escaneie com seu WhatsApp:", "info");
@@ -1014,11 +1273,266 @@ client.on("ready", async () => {
       startVideoCheck();
     });
 
-  // Iniciar a verificação imediatamente ao iniciar o servidor
+  // Process expired events immediately and then every minute
+  try {
+    await processExpiredEvents();
+  } catch (e) {
+    log(`Erro ao processar eventos expirados na inicialização: ${e.message}`, 'error');
+  }
 
-  startVideoCheck();
+  // agendar verificação de eventos expirados a cada minuto
+  cron.schedule('* * * * *', () => {
+    processExpiredEvents().catch(err => log(`Erro na tarefa agendada de eventos expirados: ${err.message}`, 'error'));
+  });
 
   log("Cron agendado com sucesso!", "success");
+});
+
+// Helper to generate analysis with AI for a list of messages
+async function generateAIAnalysis(messagesArray) {
+  if (!OPENAI_API_KEY) return null;
+  // Prepare a compact context with up to 30 messages
+  const safeMessages = messagesArray.map((m, i) => {
+    const sender = m.senderName || m.author || m.from || 'desconhecido';
+    const txt = (m.body || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\s+/g, ' ').trim();
+    // limit length per message to avoid huge payloads
+    return `${i + 1}. [${sender}] ${txt.slice(0, 1000)}`;
+  }).join('\n');
+
+  const userPrompt = `Você vai analisar as mensagens abaixo e responder com uma análise curta e afiada no estilo da persona (ácido, sarcástico, leve ofensa, nunca cruel). Procure algo para zoar nas mensagens, resuma os principais pontos e dê 2-3 observações engraçadas. Não seja muito longo (3-4 frases). Mensagens:\n${safeMessages}`;
+
+  const messages = [
+    { role: 'system', content: AI_PERSONA },
+    { role: 'user', content: userPrompt }
+  ];
+
+  // Allow larger token budget for analysis (default fallback to env or 1024)
+  const analyseTokens = parseInt(process.env.OPENAI_MAX_COMPLETION_TOKENS_ANALYSE || process.env.OPENAI_MAX_COMPLETION_TOKENS || '1024', 10);
+  const raw = await callOpenAIChat(messages, 60000, analyseTokens);
+  return raw;
+}
+
+// Command handler: !analise [n]
+client.on('message', async (msg) => {
+  try {
+  if (!msg || !msg.body) return;
+  // Only respond to messages from the configured group to avoid listening elsewhere
+  // However, always allow processing if the message was sent by this client (msg.fromMe)
+  const allowedGroup = process.env.ALLOWED_PING_GROUP || '120363339314665620@g.us';
+  if (msg.from !== allowedGroup) {
+    log(`Ignorando mensagem de ${msg.from} porque não pertence ao grupo permitido (${allowedGroup})`, 'debug');
+    return;
+  }
+  if (msg.fromMe) {
+    // Helpful debug: show truncated body when the bot processes its own message
+    log(`Processando mensagem própria (fromMe). Conteúdo: "${(msg.body || '').replace(/\s+/g, ' ').slice(0,120)}"`, 'debug');
+  }
+  const text = msg.body.trim();
+    const lowered = text.toLowerCase();
+    if (!(lowered.startsWith('!analise') || lowered === '!all')) return;
+
+    // Handle !all separately and early
+    if (lowered === '!all') {
+      try {
+        const chat = await msg.getChat();
+        const allowedGroup = process.env.ALLOWED_PING_GROUP || '120363339314665620@g.us';
+
+        if (!chat.isGroup) {
+          await msg.reply('Isso só funciona em grupos, parceiro.');
+          return;
+        }
+
+        if (!(chat.id && chat.id._serialized === allowedGroup)) {
+          await msg.reply('Comando !all restrito a administradores deste grupo.');
+          return;
+        }
+
+        // Global cooldown for !all (default 10 minutes)
+        const ALL_COOLDOWN = parseInt(process.env.ANALYSE_ALL_COOLDOWN_SECONDS || '600', 10);
+        if (!global.lastAllTimestamp) global.lastAllTimestamp = 0;
+        const nowTs = Date.now();
+        if ((nowTs - global.lastAllTimestamp) / 1000 < ALL_COOLDOWN) {
+          const wait = Math.ceil(ALL_COOLDOWN - ((nowTs - global.lastAllTimestamp) / 1000));
+          await msg.reply(`Já teve um ping recentemente. Aguenta mais ${wait} segundos.`);
+          return;
+        }
+
+        // Build mention contacts
+        const participants = (chat.participants || []);
+        const maxMentions = 256;
+        if (participants.length === 0) {
+          await msg.reply('Não consegui obter a lista de participantes.');
+          return;
+        }
+        if (participants.length > maxMentions) {
+          await msg.reply(`Esse grupo é gigante (${participants.length} membros). Não vou pingar todo mundo.`);
+          return;
+        }
+
+        const mentionContacts = [];
+        for (const p of participants) {
+          if (!p || !p.id || !p.id._serialized) continue;
+          try {
+            const c = await client.getContactById(p.id._serialized);
+            if (c) mentionContacts.push(c);
+          } catch (e) {
+            // ignore individual failures
+          }
+        }
+
+        const pingMessage = `Pessoal, atenção!`; 
+        await chat.sendMessage(pingMessage, { mentions: mentionContacts });
+        global.lastAllTimestamp = nowTs;
+        return;
+      } catch (allErr) {
+        log(`Erro ao processar !all: ${allErr.message}`, 'error');
+        await msg.reply('Falha ao tentar mencionar todos.');
+        return;
+      }
+    }
+
+    const parts = text.split(/\s+/);
+    let n = 10;
+    if (parts.length >= 2) {
+      const parsed = parseInt(parts[1], 10);
+      if (!isNaN(parsed)) n = parsed;
+    }
+
+    if (n > 30) {
+      // per requirement: cheeky refusal message
+      const reply = 'Tu acha que essa porcaria de IA é de graça? Virou zona agora, sempre com esse humor ácido dele e procurando algo pra zoar';
+      await msg.reply(reply);
+      return;
+    }
+
+    if (n <= 0) {
+      await msg.reply('Número inválido. Use !analise ou !analise <n> onde n entre 1 e 30.');
+      return;
+    }
+
+  // Enforce per-user cooldown (use msg.author for group messages)
+  // If the message was sent by the bot itself, use a stable bot-specific key so cooldowns apply correctly
+  const userId = msg.fromMe ? (client && client.info && client.info.me ? `bot:${client.info.me._serialized || client.info.me.user || 'self'}` : 'bot-self') : (msg.author || msg.from); // prefer author in groups; fallback to from for private chats
+    const now = Date.now();
+    const last = lastAnalyses.get(userId) || 0;
+    const diffSec = Math.floor((now - last) / 1000);
+    if (diffSec < ANALYSE_COOLDOWN_SECONDS) {
+      const wait = ANALYSE_COOLDOWN_SECONDS - diffSec;
+      await msg.reply(`Aguenta aí, parceiro. Espera mais ${wait} segundos antes de pedir outra análise.`);
+      return;
+    }
+
+    // Mark attempt time (use in-memory map immediately to avoid race)
+    lastAnalyses.set(userId, now);
+
+    // fetch chat and recent messages
+    const chat = await msg.getChat();
+    // fetchMessages({limit}) may include many command messages; fetch a larger window and filter out messages that are only the command
+    const fetchLimit = Math.min(60, n + 20); // attempt to fetch extra to account for command-only messages
+    let messages = [];
+    try {
+      messages = await chat.fetchMessages({ limit: fetchLimit });
+    } catch (fetchErr) {
+      log(`Erro ao buscar mensagens do chat: ${fetchErr.message}`, 'error');
+      await msg.reply('Erro ao buscar mensagens para análise.');
+      return;
+    }
+
+    // messages is array newest-first; we want chronological, and exclude the command message
+    messages = messages.reverse();
+    // filter out messages that are the !analise command itself (e.g. '!analise' or '!analise 10'), and also exclude the command message by id
+    const isCmdOnly = (m) => {
+      if (!m || !m.body) return false;
+      const t = m.body.trim().toLowerCase();
+      return /^!analise(\s+\d+)?$/.test(t);
+    };
+    let filtered = messages.filter(m => m.id.id !== msg.id.id && !isCmdOnly(m));
+    // take last n messages after filtering
+    const toAnalyze = filtered.slice(-n);
+
+    if (toAnalyze.length === 0) {
+      await msg.reply('Não há mensagens suficientes para analisar.');
+      return;
+    }
+
+    // Resolve sender display names for each message (best-effort) before analysis
+    const resolved = await Promise.all(toAnalyze.map(async (m) => {
+      const out = { ...m };
+      try {
+        // m.author is present for group messages (participant id), m.from for others
+        const id = m.author || m.from;
+        if (id && client && client.getContactById) {
+          try {
+            const contact = await client.getContactById(id);
+            if (contact) out.senderName = contact.pushname || contact.shortName || contact.formattedName || contact.name || id;
+            else out.senderName = id;
+          } catch (e) {
+            out.senderName = id;
+          }
+        } else {
+          out.senderName = 'desconhecido';
+        }
+      } catch (e) {
+        out.senderName = 'desconhecido';
+      }
+      return out;
+    }));
+
+    // Use AI to analyze and log result to Mongo (if available)
+    let analysis = null;
+    let logDoc = null;
+    const start = Date.now();
+    try {
+      analysis = await generateAIAnalysis(resolved);
+
+      // Try to persist the analysis log in Mongo if DB connected
+      const snippets = resolved.map((m, i) => ({ idx: i + 1, sender: m.senderName || 'desconhecido', text: (m.body || '').slice(0, 1000) }));
+      if (dbConnected) {
+        try {
+          logDoc = await AnalysisLog.create({
+            user: userId,
+            chatId: (await msg.getChat()).id._serialized,
+            requestedN: n,
+            analyzedCount: resolved.length,
+            messages: snippets,
+            result: analysis,
+            durationMs: Date.now() - start
+          });
+        } catch (createErr) {
+          log(`Erro ao salvar AnalysisLog: ${createErr.message}`, 'error');
+        }
+      }
+    } catch (aiErr) {
+      log(`AI analysis error: ${aiErr && aiErr.message ? aiErr.message : aiErr}`, 'error');
+      // Persist failure
+      if (dbConnected) {
+        try {
+          await AnalysisLog.create({
+            user: userId,
+            chatId: (await msg.getChat()).id._serialized,
+            requestedN: n,
+            analyzedCount: resolved.length,
+            messages: resolved.map((m, i) => ({ idx: i + 1, sender: m.senderName || 'desconhecido', text: (m.body || '').slice(0, 1000) })),
+            error: aiErr && aiErr.message ? aiErr.message : String(aiErr),
+            durationMs: Date.now() - start
+          });
+        } catch (createErr) {
+          log(`Erro ao salvar AnalysisLog (failure): ${createErr.message}`, 'error');
+        }
+      }
+    }
+
+    if (!analysis) {
+      // Fallback humorous reply
+      await msg.reply('Hmmm... a IA não colaborou dessa vez. Mas me diz: tu acha que essa porcaria de IA é de graça?');
+      return;
+    }
+
+    // Send the analysis as a reply
+    await msg.reply(analysis);
+  } catch (err) {
+    log(`Erro no handler de comando !analise: ${err.message}`, 'error');
+  }
 });
 
 // Função para inicializar diretórios de mídia

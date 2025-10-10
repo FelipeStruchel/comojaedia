@@ -150,17 +150,24 @@ async function loadContent() {
 
         contentItems.innerHTML = content.map(item => {
             if (item.type === 'text') {
+                const previewId = `preview-${sanitizeId(item.fileName)}`;
+                const btnId = `btn-${sanitizeId(item.fileName)}`;
+                // escape content for safe insertion; basic replacement of < and >
+                const safeContent = (item.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 return `
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p class="text-gray-800 mb-2">${item.content}</p>
-                        <button 
+                    <div class="bg-gray-50 p-4 rounded-lg content-item">
+                        <div id="${previewId}" class="text-content text-gray-800 mb-2 text-truncated">${safeContent}</div>
+                        <button id="${btnId}" class="read-more-btn" onclick="toggleReadMore('${previewId}','${btnId}')">Ver mais</button>
+                        <div class="mt-2">
+                          <button 
                             onclick="deleteContent('text', '${item.fileName}')"
                             class="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          >
+                            <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                        </button>
+                          </button>
+                        </div>
                     </div>
                 `;
             } else {
@@ -184,9 +191,44 @@ async function loadContent() {
                 `;
             }
         }).join('');
+
+        // after inserting, ensure buttons show/hide appropriately
+        setTimeout(() => {
+            document.querySelectorAll('.text-truncated').forEach(el => {
+                const btn = document.querySelector(`#btn-${sanitizeId(el.id.replace('preview-',''))}`);
+                if (!btn) return;
+                // If content height is small, hide the button
+                if (el.scrollHeight <= el.clientHeight + 8) {
+                    btn.style.display = 'none';
+                } else {
+                    btn.style.display = 'inline-block';
+                }
+            });
+        }, 50);
     } catch (error) {
         console.error('Erro ao carregar conteúdo:', error);
         showToast('Erro ao carregar conteúdo', 'error');
+    }
+}
+
+// Helper to create safe element id from filename
+function sanitizeId(str) {
+    return (str || '').replace(/[^a-zA-Z0-9-_]/g, '_');
+}
+
+// Toggle read-more for text preview
+function toggleReadMore(previewId, btnId) {
+    const el = document.getElementById(previewId);
+    const btn = document.getElementById(btnId);
+    if (!el || !btn) return;
+    if (el.classList.contains('text-expanded')) {
+        el.classList.remove('text-expanded');
+        el.classList.add('text-truncated');
+        btn.textContent = 'Ver mais';
+    } else {
+        el.classList.remove('text-truncated');
+        el.classList.add('text-expanded');
+        btn.textContent = 'Ver menos';
     }
 }
 

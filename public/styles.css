@@ -201,3 +201,43 @@ video.media-preview {
 .char-count.warning {
     color: #ef4444;
 } 
+
+/* Text content improvements: wrap long words, break long non-breaking strings, and provide a collapsed preview */
+.text-content {
+    white-space: pre-wrap; /* respect newlines */
+    overflow-wrap: anywhere; /* break long words */
+    word-break: break-word; /* aggressive break */
+    line-height: 1.45;
+}
+
+.text-truncated {
+    max-height: 6.5rem; /* ~4-5 lines depending on line-height */
+    overflow: hidden;
+    position: relative;
+}
+
+.text-truncated::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2.5rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 80%);
+    pointer-events: none;
+}
+
+.read-more-btn {
+    display: inline-block;
+    margin-top: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+}
+
+.text-expanded {
+    max-height: none;
+}
