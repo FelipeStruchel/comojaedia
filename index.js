@@ -108,6 +108,9 @@ connectWithRetry(mongoConnStr).catch((e) => {
 // OpenAI helper: generate a short caption using the provided persona and context
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+// Admin confirmation number (JID). Can be overridden by CONFIRMATION_NUMBER env var.
+const CONFIRMATION_NUMBER_RAW = process.env.CONFIRMATION_NUMBER || '5514997061981';
+const confirmationNumber = CONFIRMATION_NUMBER_RAW.includes('@') ? CONFIRMATION_NUMBER_RAW : `${CONFIRMATION_NUMBER_RAW}@c.us`;
 
 async function callOpenAIChat(messages, timeoutMs = 60000, maxCompletionTokensOverride = null) {
   if (!OPENAI_API_KEY) {
@@ -117,6 +120,13 @@ async function callOpenAIChat(messages, timeoutMs = 60000, maxCompletionTokensOv
   try {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
+    // Log a short summary of the request (avoid logging full messages to reduce noise/PII)
+    try {
+      const summary = (messages || []).slice(0,5).map(m => (m.content || '').replace(/\s+/g,' ').trim().slice(0,120)).join(' | ');
+      log(`OpenAI request -> model=${OPENAI_MODEL} timeout=${timeoutMs}ms tokens=${maxCompletionTokensOverride || process.env.OPENAI_MAX_COMPLETION_TOKENS || 'default'} messagesSummary=[${summary}]`, 'debug');
+    } catch (e) {
+      // ignore logging errors
+    }
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -145,6 +155,14 @@ async function callOpenAIChat(messages, timeoutMs = 60000, maxCompletionTokensOv
     }
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content || null;
+    try {
+      if (content) {
+        const cshort = content.replace(/\s+/g,' ').trim().slice(0,240);
+        log(`OpenAI returned content (truncated): ${cshort}`, 'debug');
+      } else {
+        log('OpenAI returned no content (null/empty).', 'warning');
+      }
+    } catch (e) {}
     return content ? content.trim() : null;
   } catch (err) {
     // Detect aborts/timeouts and log context for debugging
@@ -164,7 +182,7 @@ async function callOpenAIChat(messages, timeoutMs = 60000, maxCompletionTokensOv
 
 // Persona/system prompt from user
 const AI_PERSONA = `Você é um bot de WhatsApp feito por Grego.
-Seu estilo é ácido, engraçado e levemente ofensivo — mas nunca cruel.
+Seu estilo é ácido, engraçado e levemente ofensivo.
 Você fala como aquele amigo sarcástico que sempre tem uma resposta pronta.
 Prefere debochar da situação do que dar lição de moral.
 O humor é direto, às vezes seco, às vezes absurdo, mas sempre com timing.
@@ -172,8 +190,23 @@ Nada de frases inspiradoras, metáforas batidas ou reflexões de LinkedIn.
 Se for filosófico, é no meme — tipo “a vida tá aí pra decepcionar”.
 Use português brasileiro, gírias leves e frases curtas.
 Não use caps lock, emojis só quando deixarem a frase mais engraçada (1 ou 2 no máximo).
-Pode ser ligeiramente rude se for engraçado, mas nunca chato ou ofensivo de verdade.
+Pode ser ligeiramente rude se for engraçado.
 O objetivo é parecer o amigo do grupo que zoa todo mundo, inclusive ele mesmo.`;
+
+// helper: redact phone-like numbers and long digit sequences to avoid exposing PII to the AI
+function redactNumbers(text) {
+  if (!text) return text;
+  try {
+    let s = String(text);
+    // Replace phone-like sequences: +55 14 99999-9999, (14) 9999-9999, 5514997061981, etc.
+    s = s.replace(/\+?\d[\d\s().\-]{4,}\d/g, '[NÚMERO_REMOVIDO]');
+    // Fallback: any remaining runs of 4 or more digits
+    s = s.replace(/\d{4,}/g, '[NÚMERO_REMOVIDO]');
+    return s;
+  } catch (e) {
+    return text;
+  }
+}
 
 // Note: we rely on the prompt asking OpenAI to "RETORNE SOMENTE" the final message.
 // The raw response from callOpenAIChat is already trimmed, so we return it directly
@@ -187,13 +220,17 @@ async function generateAICaption({ purpose = 'greeting', names = [], timeStr = n
     if (noEvents) {
       userMsgParts.push(`Gere uma legenda curta (1-2 frases) em português brasileiro para um grupo de WhatsApp dizendo que não há eventos hoje. Convide a galera a cadastrar no link: https://vmi2849405.contaboserver.net. Seja ácido, engraçado e levemente ofensivo conforme a persona. Use no máximo 2 emojis. RETORNE SOMENTE a legenda final, sem explicações, sem introduções como 'claro' ou 'vou gerar', sem passos.`);
       if (dayOfWeek) userMsgParts.push(`Contexto: hoje é ${dayOfWeek}.`);
+      // Ensure AI attempts to be funny within the persona
+      userMsgParts.push('Tente ser engraçado e sarcástico conforme a persona acima.');
     } else {
       userMsgParts.push(`Gere uma legenda curta (1-2 frases) em português brasileiro mencionando os eventos do dia: ${eventList}${timeStr ? ' (' + timeStr + ')' : ''}. Seja ácido, engraçado, sarcástico e leve. Evite metáforas inspiracionais. Máximo 2 emojis. RETORNE SOMENTE a legenda final, sem explicações, sem introduções como 'claro' ou 'vou gerar', sem passos.`);
       if (dayOfWeek) userMsgParts.push(`Contexto: hoje é ${dayOfWeek}.`);
+      userMsgParts.push('Tente ser engraçado e sarcástico conforme a persona acima.');
     }
   } else if (purpose === 'event') {
     // Require the AI to include a short comment/observation in addition to the announcement
     userMsgParts.push(`Gere uma mensagem de anúncio para o grupo dizendo que é hora do evento ${eventList}${timeStr ? ' (' + timeStr + ')' : ''}. A mensagem deve conter: 1) uma frase clara anunciando que o evento começou; 2) uma observação curta e sarcástica (1 frase) comentando a situação — tipo uma zoeira rápida sobre o evento ou os participantes. Curta, sarcástica, com humor ácido, em português brasileiro. Até 2 emojis, nada cruel. RETORNE SOMENTE a mensagem final (duas frases no máximo), sem explicações.`);
+    userMsgParts.push('Tente ser engraçado e sarcástico conforme a persona acima.');
   }
 
   const messages = [
@@ -998,6 +1035,8 @@ app.delete("/media/:type/:filename", async (req, res) => {
 // Função para enviar mensagem do WhatsApp
 async function sendWhatsAppMessage(videoPath = null) {
   try {
+    // Define groupId from env or default
+    const groupId = process.env.GROUP_ID || '120363339314665620@g.us';
     // Se não foi passado o videoPath, usa o vídeo local
     if (!videoPath) {
       videoPath = getLocalDailyVideo();
@@ -1014,12 +1053,16 @@ async function sendWhatsAppMessage(videoPath = null) {
 
     // Buscar evento(s) mais próximo(s) no banco e compor legenda com contagem dinâmica
     let defaultMessage;
+    // declare these in function scope so they can be used later
+    let futureEvents = null;
+    let nearestDate = null;
+    let nearestIso = null;
     try {
-      const futureEvents = await Event.find({ date: { $gt: new Date() } }).sort({ date: 1 }).lean();
+      futureEvents = await Event.find({ date: { $gt: new Date() } }).sort({ date: 1 }).lean();
       if (futureEvents && futureEvents.length > 0) {
         // selecionar todos os eventos que compartilham a mesma data/hora mais próxima
-        const nearestDate = new Date(futureEvents[0].date);
-        const nearestIso = nearestDate.toISOString();
+        nearestDate = new Date(futureEvents[0].date);
+        nearestIso = nearestDate.toISOString();
         const nearestEvents = futureEvents.filter(e => new Date(e.date).toISOString() === nearestIso);
         const names = nearestEvents.map(e => e.name).join(' ou ');
 
@@ -1076,9 +1119,11 @@ async function sendWhatsAppMessage(videoPath = null) {
       }
       if (ai) defaultMessage = ai;
     } catch (allErr) {
-      log(`Erro ao processar !all: ${allErr.message}`, 'error');
-      await msg.reply('Falha ao tentar mencionar todos.');
-      return;
+      log(`Erro ao processar legenda com AI: ${allErr.message}`, 'error');
+      // fallback: keep defaultMessage as previously set
+    }
+    if (!defaultMessage) {
+      log('AI did not produce a default message; using static fallback.', 'warning');
     }
 
     // 1. Enviar vídeo com a mensagem de contagem regressiva (baseada em eventos cadastrados)
@@ -1092,12 +1137,15 @@ async function sendWhatsAppMessage(videoPath = null) {
       log("Vídeo enviado com sucesso", "success");
     } catch (videoError) {
       log(`Erro ao enviar vídeo: ${videoError.message}`, "error");
-      await retryOperation(async () => {
-        await client.sendMessage(
-          confirmationNumber,
-          "❌ Erro ao enviar vídeo: " + videoError.message
-        );
-      });
+      // Notify admin/confirmation number (best-effort)
+      try {
+        await retryOperation(async () => {
+          await client.sendMessage(confirmationNumber, `❌ Erro ao enviar vídeo: ${videoError.message}`);
+        }, 2, 3000);
+        log(`Notificação enviada para admin ${confirmationNumber}`, 'info');
+      } catch (notifyErr) {
+        log(`Falha ao notificar admin (${confirmationNumber}): ${notifyErr.message}`, 'error');
+      }
       throw videoError;
     }
 
@@ -1210,6 +1258,7 @@ async function processExpiredEvents() {
     try {
       const aiMsg = await generateAICaption({ purpose: 'event', names: groupEvents.map(e => e.name), timeStr });
       if (aiMsg) message = aiMsg;
+      else log(`generateAICaption returned null for events: ${names}`, 'warning');
     } catch (aiErr) {
       log(`OpenAI announcement failed: ${aiErr && aiErr.message ? aiErr.message : aiErr}`, 'info');
     }
@@ -1286,20 +1335,42 @@ client.on("ready", async () => {
   });
 
   log("Cron agendado com sucesso!", "success");
+
+  // Iniciar verificação de vídeo ao iniciar
+  log("Iniciando verificação de vídeo ao iniciar...", "info");
+  startVideoCheck();
 });
 
 // Helper to generate analysis with AI for a list of messages
 async function generateAIAnalysis(messagesArray) {
   if (!OPENAI_API_KEY) return null;
+  // helper: redact phone-like numbers and long digit sequences to avoid exposing PII to the AI
+  function redactNumbers(text) {
+    if (!text) return text;
+    try {
+      // Replace phone-like sequences: +55 14 99999-9999, (14) 9999-9999, 5514997061981, etc.
+      // First replace long runs containing digits, spaces, +, parentheses and common separators
+      let s = String(text);
+      s = s.replace(/\+?\d[\d\s().\-]{4,}\d/g, '[NÚMERO_REMOVIDO]');
+      // Fallback: any remaining runs of 4 or more digits
+      s = s.replace(/\d{4,}/g, '[NÚMERO_REMOVIDO]');
+      return s;
+    } catch (e) {
+      return text;
+    }
+  }
   // Prepare a compact context with up to 30 messages
   const safeMessages = messagesArray.map((m, i) => {
     const sender = m.senderName || m.author || m.from || 'desconhecido';
-    const txt = (m.body || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\s+/g, ' ').trim();
+    // Prefer sanitized body if present, otherwise redact here
+    const raw = (m.bodySanitized || m.body || '');
+    const redacted = redactNumbers(raw);
+    const txt = redacted.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\s+/g, ' ').trim();
     // limit length per message to avoid huge payloads
     return `${i + 1}. [${sender}] ${txt.slice(0, 1000)}`;
   }).join('\n');
 
-  const userPrompt = `Você vai analisar as mensagens abaixo e responder com uma análise curta e afiada no estilo da persona (ácido, sarcástico, leve ofensa, nunca cruel). Procure algo para zoar nas mensagens, resuma os principais pontos e dê 2-3 observações engraçadas. Não seja muito longo (3-4 frases). Mensagens:\n${safeMessages}`;
+  const userPrompt = `Você vai analisar as mensagens abaixo e responder com uma análise curta e afiada no estilo da persona (ácido, sarcástico, leve ofensa). Procure algo para zoar nas mensagens, resuma os principais pontos e dê 2-3 observações engraçadas. Não seja muito longo (3-4 frases). IMPORTANTE: NÚMEROS TELEFÔNICOS E DADOS NUMÉRICOS FORAM REMOVIDOS DO TEXTO (substituídos por [NÚMERO_REMOVIDO]). NÃO MENCIONE, NÃO TENTE RECONSTRUIR OU COMENTAR NENHUM NÚMERO. Mensagens:\n${safeMessages}`;
 
   const messages = [
     { role: 'system', content: AI_PERSONA },
@@ -1475,6 +1546,12 @@ client.on('message', async (msg) => {
       } catch (e) {
         out.senderName = 'desconhecido';
       }
+      // add sanitized version of the body to avoid sending numbers to AI
+      try {
+        out.bodySanitized = redactNumbers(out.body || '');
+      } catch (e) {
+        out.bodySanitized = out.body || '';
+      }
       return out;
     }));
 
@@ -1486,7 +1563,7 @@ client.on('message', async (msg) => {
       analysis = await generateAIAnalysis(resolved);
 
       // Try to persist the analysis log in Mongo if DB connected
-      const snippets = resolved.map((m, i) => ({ idx: i + 1, sender: m.senderName || 'desconhecido', text: (m.body || '').slice(0, 1000) }));
+  const snippets = resolved.map((m, i) => ({ idx: i + 1, sender: m.senderName || 'desconhecido', text: (m.bodySanitized || m.body || '').slice(0, 1000) }));
       if (dbConnected) {
         try {
           logDoc = await AnalysisLog.create({
