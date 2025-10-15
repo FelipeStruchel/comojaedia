@@ -1,19 +1,21 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const moment = require('moment');
-const fs = require('fs');
-const path = require('path');
+import WhatsAppWebPkg from 'whatsapp-web.js';
+import QrCodePkg from 'qrcode-terminal';
+const { Client, LocalAuth } = WhatsAppWebPkg;
+const { generate } = QrCodePkg;
+import moment from 'moment';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 // Detectar caminho do Chrome/Chromium de forma condicional por plataforma
-const os = require('os');
+// import os from 'os'; // not used
 let chromePath;
 if (process.platform === 'win32') {
     const candidates = [
-        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe')
+        join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe')
     ];
-    chromePath = candidates.find(p => p && fs.existsSync(p));
+    chromePath = candidates.find(p => p && existsSync(p));
 }
 
 // Configuração do WhatsApp
@@ -89,7 +91,7 @@ async function sairGruposInativos() {
 
 // Configurar evento de QR Code do WhatsApp
 client.on('qr', (qr) => {
-    qrcode.generate(qr, { small: true });
+    generate(qr, { small: true });
     console.log('QR Code gerado! Escaneie com seu WhatsApp.');
 });
 

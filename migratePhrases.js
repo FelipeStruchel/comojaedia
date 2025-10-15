@@ -1,6 +1,7 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { saveMedia } = require("./mediaManager");
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { saveMedia } from "./mediaManager.js";
 
 async function migratePhrases() {
   try {
@@ -13,7 +14,7 @@ async function migratePhrases() {
     // Para cada frase, cria um arquivo temporário e salva usando o mediaManager
     for (const frase of frases) {
       // Cria um arquivo temporário com a frase
-      const tempFilePath = path.join(__dirname, "temp_phrase.txt");
+      const tempFilePath = join(__dirname, "temp_phrase.txt");
       await fs.writeFile(tempFilePath, frase);
 
       // Prepara o objeto de arquivo no formato esperado pelo mediaManager
@@ -36,3 +37,5 @@ async function migratePhrases() {
 
 // Executa a migração
 migratePhrases();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);

@@ -1,7 +1,9 @@
-const express = require("express");
-const cors = require("cors");
-const fs = require("fs").promises;
-const path = require("path");
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,10 +13,12 @@ const MAX_MESSAGE_LENGTH = 4096;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static(join(__dirname, "public")));
 
 // Caminho para o arquivo de frases
-const frasesPath = path.join(__dirname, "frases.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const frasesPath = join(__dirname, "frases.json");
 
 // Função para ler as frases
 async function lerFrases() {
@@ -94,7 +98,7 @@ app.delete("/frases/:index", async (req, res) => {
 
 // Rota para servir o frontend
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(join(__dirname, "public", "index.html"));
 });
 
 // Iniciar o servidor

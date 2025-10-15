@@ -1,6 +1,8 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { MessageMedia } = require("whatsapp-web.js");
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import WhatsAppWebPkg from "whatsapp-web.js";
+const { MessageMedia } = WhatsAppWebPkg;
 
 // Configurações
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -13,10 +15,13 @@ const MEDIA_TYPES = {
 };
 
 // Diretórios para cada tipo de mídia
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const MEDIA_DIRS = {
-  [MEDIA_TYPES.TEXT]: path.join(__dirname, "media", "texts"),
-  [MEDIA_TYPES.IMAGE]: path.join(__dirname, "media", "images"),
-  [MEDIA_TYPES.VIDEO]: path.join(__dirname, "media", "videos"),
+  [MEDIA_TYPES.TEXT]: join(__dirname, "media", "texts"),
+  [MEDIA_TYPES.IMAGE]: join(__dirname, "media", "images"),
+  [MEDIA_TYPES.VIDEO]: join(__dirname, "media", "videos"),
 };
 
 // Criar diretórios se não existirem
@@ -43,7 +48,7 @@ async function checkFolderSize(dir) {
   let totalSize = 0;
 
   for (const file of files) {
-    const stats = await fs.stat(path.join(dir, file));
+    const stats = await fs.stat(join(dir, file));
     totalSize += stats.size;
   }
 
@@ -68,7 +73,7 @@ async function saveMedia(file, type) {
 
   const dir = MEDIA_DIRS[type];
   const fileName = `${Date.now()}_${file.originalname}`;
-  const filePath = path.join(dir, fileName);
+  const filePath = join(dir, fileName);
 
   console.log("Caminhos configurados:", {
     dir: dir,
@@ -115,7 +120,7 @@ async function listAllMedia() {
     const files = await fs.readdir(dir);
 
     for (const file of files) {
-      const filePath = path.join(dir, file);
+      const filePath = join(dir, file);
       allMedia.push({
         path: filePath,
         type,
@@ -160,7 +165,7 @@ async function prepareMediaForWhatsApp(media) {
   }
 }
 
-module.exports = {
+export {
   MEDIA_TYPES,
   saveMedia,
   getRandomMedia,
